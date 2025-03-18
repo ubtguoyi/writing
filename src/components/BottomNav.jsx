@@ -2,21 +2,19 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Book, Dumbbell } from 'lucide-react'
+import { NAV_ITEMS } from '@/lib/constants'
 
+/**
+ * 底部导航组件
+ * 在移动设备上显示的主导航栏
+ */
 export function BottomNav() {
   const pathname = usePathname()
-  
-  const navItems = [
-    { name: '首页', href: '/', icon: Home },
-    { name: '错题本', href: '/error-book', icon: Book },
-    { name: '练习', href: '/exercise', icon: Dumbbell },
-  ]
   
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 dark:bg-gray-950 dark:border-gray-800">
       <div className="flex items-center justify-around h-14">
-        {navItems.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || 
                           (item.href !== '/' && pathname.startsWith(item.href))
           const Icon = item.icon

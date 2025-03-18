@@ -2,7 +2,6 @@ import './globals.css'
 import { Noto_Sans_SC } from 'next/font/google'
 import { cn } from '@/lib/utils'
 import { ThemeProvider } from "@/components/theme-provider"
-import { TopNav } from '@/components/TopNav'
 import { BottomNav } from '@/components/BottomNav'
 import { SideNav } from '@/components/SideNav'
 
@@ -31,24 +30,19 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          {/* Show TopNav only on mobile, hidden on md+ screens */}
-          <div className="md:hidden">
-            <TopNav />
-          </div>
-          
           <div className="flex">
-            {/* Show SideNav only on md+ screens */}
-            <div className="hidden md:block w-64 fixed inset-y-0">
+            {/* SideNav - hidden on mobile, visible on desktop */}
+            <div className="hidden md:block md:w-64 md:fixed md:inset-y-0 md:z-50">
               <SideNav />
             </div>
             
-            {/* Main content with padding for desktop sidebar */}
+            {/* Main content */}
             <main className="flex-1 pb-16 md:pb-0 md:pl-64">
               {children}
             </main>
           </div>
           
-          {/* Show BottomNav only on mobile, hidden on md+ screens */}
+          {/* Show BottomNav only on mobile, hidden on desktop */}
           <div className="md:hidden">
             <BottomNav />
           </div>

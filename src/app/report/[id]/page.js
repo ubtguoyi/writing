@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Download, Share2 } from "lucide-react"
 import { 
@@ -16,17 +16,14 @@ export default function Report({ params }) {
   const router = useRouter()
   const { id } = params
   
-  const [essay] = useState({
+  const [essay, setEssay] = useState({
     id: 1,
-    title: "我的暑假生活",
-    grade: "初二",
-    wordCount: 500,
-    submittedAt: "2023-12-14 11:05:40",
-    content: "今年暑假，我和家人一起去了海边度假。那里的风景非常美丽，蓝蓝的天空，清澈的海水，还有金色的沙滩。我们在海边玩了很多游戏，比如游泳、堆沙堡和捡贝壳。\n\n除了去海边，我还参加了一个科学夏令营。在那里，我学习了很多有趣的科学知识，做了许多实验。我最喜欢的是火箭实验，我们用简单的材料制作了小火箭，然后看着它们飞向天空，那感觉真是太棒了！\n\n这个暑假我还读了很多书。我最喜欢的是《哈利·波特》系列，书中的魔法世界让我着迷。我希望自己也能收到霍格沃茨的录取通知书，可以学习魔法。\n\n总的来说，这个暑假过得非常充实和快乐。我不仅玩得开心，还学到了很多新知识。我期待着下一个暑假的到来！",
-    images: [
-      "/essay-image-1.jpg",
-      "/essay-image-2.jpg"
-    ],
+    title: "",
+    grade: "",
+    wordCount: 0,
+    submittedAt: "",
+    content: "",
+    images: [],
     scores: {
       content: 85,
       structure: 78,
@@ -60,7 +57,7 @@ export default function Report({ params }) {
     detailedCorrections: {
       paragraphs: [
         {
-          original: "今年暑假，我和家人一起去了海边度假。那里的风景非常美丽，蓝蓝的天空，清澈的海水，还有金色的沙滩。我们在海边玩了很多游戏，比如游泳、堆沙堡和捡贝壳。",
+          original: "",
           corrections: [
             {
               original: "蓝蓝的天空",
@@ -75,7 +72,7 @@ export default function Report({ params }) {
           ]
         },
         {
-          original: "除了去海边，我还参加了一个科学夏令营。在那里，我学习了很多有趣的科学知识，做了许多实验。我最喜欢的是火箭实验，我们用简单的材料制作了小火箭，然后看着它们飞向天空，那感觉真是太棒了！",
+          original: "",
           corrections: [
             {
               original: "那感觉真是太棒了",
@@ -119,7 +116,223 @@ export default function Report({ params }) {
     ]
   })
 
-  const [activeTab, setActiveTab] = useState("总体评价")
+  const [activeTab, setActiveTab] = useState("作文评分")
+
+  useEffect(() => {
+    // Load form data and workflow result from localStorage
+    const formDataString = localStorage.getItem('essayFormData');
+    const workflowResultString = localStorage.getItem('workflowResult');
+    const directEssayText = localStorage.getItem('essayText');
+    
+    // Try to get correction records to find the specific report data
+    const correctionRecords = JSON.parse(localStorage.getItem('correctionRecords') || '[]');
+    const recordData = correctionRecords.find(record => record.id === parseInt(id));
+    
+    // Try to get form data
+    let formData = null;
+    if (formDataString) {
+      try {
+        formData = JSON.parse(formDataString);
+      } catch (error) {
+        // Error handling for form data parsing
+      }
+    }
+    
+    // Try to get essay text from different sources
+    let essayText = "";
+    
+    // First priority: Get from the specific record
+    if (recordData && recordData.originalText) {
+      essayText = recordData.originalText;
+    }
+    // Second try: Direct essay text from localStorage
+    else if (directEssayText) {
+      essayText = directEssayText;
+    } 
+    // Third try: Extract from workflow result
+    else if (workflowResultString) {
+      try {
+        const workflowResult = JSON.parse(workflowResultString);
+        
+        if (workflowResult?.outputs?.text) {
+          essayText = workflowResult.outputs.text;
+        } else if (workflowResult?.data?.outputs?.text) {
+          essayText = workflowResult.data.outputs.text;
+        } else if (typeof workflowResult.outputs === 'object') {
+          // If outputs is an object but doesn't have text directly
+          // Try to get text from any property that might contain it
+          for (const key in workflowResult.outputs) {
+            if (typeof workflowResult.outputs[key] === 'string') {
+              essayText = workflowResult.outputs[key];
+              break;
+            } else if (workflowResult.outputs[key]?.text) {
+              essayText = workflowResult.outputs[key].text;
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        // Error handling for workflow result parsing
+      }
+    }
+    
+    // Provide fallback text if empty
+    if (!essayText) {
+      essayText = "无法获取作文内容，请检查API响应格式。";
+    }
+    
+    // Format paragraphs - split by new lines
+    const paragraphs = essayText.split('\n\n').filter(p => p.trim() !== '');
+    
+    // Check if we have API outputs from record data
+    const outputData = recordData?.outputResults || {};
+    
+    // Extract score information from output data
+    let scoreData = {
+      content: 0,
+      structure: 0,
+      language: 0,
+      creativity: 0,
+      logic: 0
+    };
+    
+    // Extract corrections from output data
+    let corrections = [];
+    
+    // Process the output data to extract scores and corrections
+    if (outputData) {
+      // Extract base score (全文无错别字)
+      if (outputData.base && typeof outputData.base === 'string') {
+        try {
+          const baseData = JSON.parse(outputData.base);
+          if (baseData.score_num) {
+            scoreData.content = baseData.score_num * 0.2;
+          }
+        } catch (e) {
+          console.error("Error parsing base data", e);
+        }
+      }
+      
+      // Extract construction score (这篇文章结构严谨)
+      if (outputData.construction && typeof outputData.construction === 'string') {
+        try {
+          const constructionData = JSON.parse(outputData.construction);
+          if (constructionData.score_sum) {
+            scoreData.structure = constructionData.score_sum * 0.8;
+          }
+        } catch (e) {
+          console.error("Error parsing construction data", e);
+        }
+      }
+      
+      // Extract content score (这篇作文内容充实)
+      if (outputData.content && typeof outputData.content === 'string') {
+        try {
+          const contentData = JSON.parse(outputData.content);
+          if (contentData.score_sum) {
+            scoreData.content = contentData.score_sum * 0.8;
+          }
+          
+          // Add this as a correction
+          corrections.push({
+            original: "内容表达",
+            suggestion: "优化内容表达",
+            reason: contentData.reason || "提升文章内容的表达方式"
+          });
+        } catch (e) {
+          console.error("Error parsing content data", e);
+        }
+      }
+      
+      // Extract language score (这篇文章在结构上非常清晰)
+      if (outputData.language && typeof outputData.language === 'string') {
+        try {
+          const languageData = JSON.parse(outputData.language);
+          if (languageData.score_sum) {
+            scoreData.language = languageData.score_sum * 0.8;
+          }
+          
+          // Add this as a correction
+          corrections.push({
+            original: "语言使用",
+            suggestion: "优化语言表达",
+            reason: languageData.reason || "提升文章的语言表达"
+          });
+        } catch (e) {
+          console.error("Error parsing language data", e);
+        }
+      }
+      
+      // Extract theme score (这篇作文主题明确)
+      if (outputData.theme && typeof outputData.theme === 'string') {
+        try {
+          const themeData = JSON.parse(outputData.theme);
+          if (themeData.score_sum) {
+            scoreData.creativity = themeData.score_sum * 0.8;
+          }
+          
+          // Add this as a correction
+          corrections.push({
+            original: "主题表达",
+            suggestion: "优化主题表达",
+            reason: themeData.reason || "使主题表达更加明确"
+          });
+        } catch (e) {
+          console.error("Error parsing theme data", e);
+        }
+      }
+      
+      // Extract correct_text if available
+      if (outputData.correct_text && typeof outputData.correct_text === 'string') {
+        try {
+          const correctText = JSON.parse(outputData.correct_text);
+          
+          if (correctText.reason) {
+            corrections.push({
+              original: "原文表述",
+              suggestion: "修改为更准确的表述",
+              reason: correctText.reason || "提升文章的表达准确性"
+            });
+          }
+        } catch (e) {
+          console.error("Error parsing correct_text data", e);
+        }
+      }
+    }
+    
+    // Update essay state with the extracted data
+    setEssay(prev => ({
+      ...prev,
+      title: formData?.title || recordData?.title || "",
+      grade: formData?.grade || recordData?.grade || "",
+      wordCount: formData?.wordCount || recordData?.wordCount || 0,
+      submittedAt: formData?.submittedAt || recordData?.submittedAt || "",
+      content: essayText,
+      // Update scores based on API outputs
+      scores: {
+        ...prev.scores,
+        content: Math.round(scoreData.content) || prev.scores.content,
+        structure: Math.round(scoreData.structure) || prev.scores.structure,
+        language: Math.round(scoreData.language) || prev.scores.language,
+        creativity: Math.round(scoreData.creativity) || prev.scores.creativity,
+        logic: Math.round(scoreData.logic) || prev.scores.logic
+      },
+      // Update corrections with API data
+      corrections: corrections.length > 0 ? corrections : prev.corrections,
+      // Update detailedCorrections with actual paragraphs
+      detailedCorrections: {
+        ...prev.detailedCorrections,
+        paragraphs: paragraphs.map((p, index) => {
+          // Keep existing corrections if available, or use empty array
+          const existingCorrections = prev.detailedCorrections.paragraphs[index]?.corrections || [];
+          return {
+            original: p,
+            corrections: existingCorrections
+          };
+        })
+      }
+    }));
+  }, [id]);
 
   const handleShare = () => {
     alert("分享功能即将上线")
@@ -129,13 +342,30 @@ export default function Report({ params }) {
     alert("下载功能即将上线")
   }
 
+  // Calculate the total score from the individual scores
+  const calculateTotalScore = () => {
+    const { content, structure, language, creativity, logic } = essay.scores;
+    // Weight the scores according to importance
+    const weightedScore = (content * 0.3) + (structure * 0.2) + (language * 0.25) + (creativity * 0.15) + (logic * 0.1);
+    return Math.round(weightedScore);
+  }
+  
+  // Get the grade description based on the score
+  const getScoreGrade = (score) => {
+    if (score >= 90) return "优秀";
+    if (score >= 80) return "良好";
+    if (score >= 70) return "中等";
+    if (score >= 60) return "及格";
+    return "需提高";
+  }
+
   return (
     <div className="max-w-4xl mx-auto bg-background min-h-screen">
       {/* Header */}
       <div className="border-b p-4">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => router.push("/results")} 
+            onClick={() => router.push("/correction-records")} 
             className="p-2 hover:bg-gray-100 rounded-full"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -162,17 +392,25 @@ export default function Report({ params }) {
 
       {/* Content */}
       <div className="p-4">
-        <div className="mb-6">
+        {/* <div className="mb-6">
           <h2 className="text-xl font-bold">{essay.title}</h2>
           <p className="text-sm text-gray-500">{essay.grade} · {essay.wordCount}字</p>
+        </div> */}
+
+        {/* Add Original Essay Content Box */}
+        <div className="mb-6 border rounded-md p-4 bg-white">
+          {/* <h3 className="text-lg font-medium mb-3">无</h3> */}
+          <div className="text-gray-700 whitespace-pre-line">
+            {essay.content}
+          </div>
         </div>
 
         <div className="flex border-b mb-6 gap-6">
           <button 
-            className={`pb-2 font-medium ${activeTab === "总体评价" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
-            onClick={() => setActiveTab("总体评价")}
+            className={`pb-2 font-medium ${activeTab === "作文评分" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
+            onClick={() => setActiveTab("作文评分")}
           >
-            总体评价
+            作文评分
           </button>
           <button 
             className={`pb-2 font-medium ${activeTab === "详细批改" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
@@ -181,19 +419,19 @@ export default function Report({ params }) {
             详细批改
           </button>
           <button 
-            className={`pb-2 font-medium ${activeTab === "改进建议" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
-            onClick={() => setActiveTab("改进建议")}
+            className={`pb-2 font-medium ${activeTab === "作文提升" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
+            onClick={() => setActiveTab("作文提升")}
           >
-            改进建议
+            作文提升
           </button>
         </div>
 
         <div>
-          {/* 总体评价 Tab Content */}
-          {activeTab === "总体评价" && (
+          {/* 作文评分 Tab Content (renamed from 总体评价) */}
+          {activeTab === "作文评分" && (
             <div className="mb-10">
               <h3 className="text-lg font-medium mb-2">总体评分</h3>
-              <p className="text-xl font-bold mb-6">82分 <span className="text-sm font-normal text-gray-500">(优秀)</span></p>
+              <p className="text-xl font-bold mb-6">{calculateTotalScore()}分 <span className="text-sm font-normal text-gray-500">({getScoreGrade(calculateTotalScore())})</span></p>
               
               <div style={{ width: '100%', height: 300 }} className="mb-6">
                 <ResponsiveContainer>
@@ -222,14 +460,7 @@ export default function Report({ params }) {
               </div>
 
               <div className="mb-10 mt-10">
-                <h3 className="text-lg font-medium mb-3">原文</h3>
-                <div className="text-gray-700">
-                  {essay.content.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="mb-4">{paragraph}</p>
-                  ))}
-                </div>
-                
-                <h3 className="text-lg font-medium mt-8 mb-3">修改建议</h3>
+                <h3 className="text-lg font-medium mb-3">修改建议</h3>
                 <div className="space-y-4">
                   {essay.corrections.map((correction, index) => (
                     <div key={index} className="border-l-4 border-yellow-400 pl-4 py-2 bg-yellow-50 rounded-r">
@@ -259,7 +490,7 @@ export default function Report({ params }) {
                     <h4 className="font-medium">段落 {paragraphIndex + 1}</h4>
                   </div>
                   <div className="p-4">
-                    <p className="text-gray-700 mb-4 bg-gray-50 p-3 rounded">{paragraph.original}</p>
+                    <p className="text-gray-700 mb-4 bg-gray-50 p-3 rounded whitespace-pre-line">{paragraph.original}</p>
                     
                     <h5 className="font-medium text-blue-600 mb-2">修改建议：</h5>
                     <div className="space-y-4">
@@ -278,7 +509,7 @@ export default function Report({ params }) {
               <div className="flex justify-end mt-6">
                 <button 
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  onClick={() => setActiveTab("改进建议")}
+                  onClick={() => setActiveTab("作文提升")}
                 >
                   查看改进建议
                 </button>
@@ -286,8 +517,8 @@ export default function Report({ params }) {
             </div>
           )}
 
-          {/* 改进建议 Tab Content */}
-          {activeTab === "改进建议" && (
+          {/* 作文提升 Tab Content (renamed from 改进建议) */}
+          {activeTab === "作文提升" && (
             <div className="mb-10">
               <div className="bg-green-50 p-4 rounded-md mb-6 border border-green-100">
                 <h3 className="text-lg font-medium mb-3 text-green-800">改进建议概述</h3>

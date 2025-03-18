@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Send, Sparkles, BookOpen, FileText, PenLine, X, Upload } from "lucide-react"
+import { Send, Sparkles, BookOpen, FileText, PenLine, X, Upload, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,51 +10,261 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { useForm } from "react-hook-form"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
+/**
+ * 主页组件
+ * 提供作文提交和批改功能的主界面
+ */
 export default function Home() {
   const router = useRouter()
-  const [grade, setGrade] = useState("")
-  const [wordCount, setWordCount] = useState("")
-  const [title, setTitle] = useState("")
   const [images, setImages] = useState([])
+  const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitProgress, setSubmitProgress] = useState("")
+  const [apiResponse, setApiResponse] = useState(null)
+  
+  // 初始化表单控制器
+  const form = useForm({
+    defaultValues: {
+      grade: "",
+      wordCount: "",
+      title: ""
+    }
+  })
 
-  const handleImageUpload = (e) => {
+  /**
+   * 处理图片上传
+   * @param {Event} e - 文件选择事件
+   */
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files)
     if (files.length > 0) {
-      const newImages = files.map(file => ({
-        file,
-        preview: URL.createObjectURL(file)
-      }))
-      setImages(prev => [...prev, ...newImages])
+      setIsUploading(true)
+      
+      try {
+        // 处理每个文件并立即上传
+        const uploadedImages = []
+        
+        for (const file of files) {
+          // 创建预览
+          const preview = URL.createObjectURL(file)
+          
+          // 创建图片上传的表单数据
+          const imageFormData = new FormData()
+          imageFormData.append('file', file)
+          imageFormData.append('user', 'abc')
+          
+          // 上传图片
+          const uploadResponse = await fetch('https://llm.ubtrobot.com/v1/files/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer app-ILbJeMTBKKxhcbjZ0sewOkOJ',
+            },
+            body: imageFormData
+          })
+          
+          if (!uploadResponse.ok) {
+            throw new Error('图片上传失败')
+          }
+          
+          const uploadResult = await uploadResponse.json()
+          
+          // 存储图片数据及返回的ID
+          uploadedImages.push({
+            file,
+            preview,
+            id: uploadResult.id,
+            text: uploadResult.text || ""
+          })
+        }
+        
+        // 将上传的图片添加到状态中
+        setImages(prev => [...prev, ...uploadedImages])
+      } catch (error) {
+        console.error("图片上传错误:", error)
+      } finally {
+        setIsUploading(false)
+      }
     }
   }
 
+  /**
+   * 移除已上传的图片
+   * @param {number} index - 要移除的图片索引
+   */
   const removeImage = (index) => {
     setImages(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  /**
+   * 处理表单提交
+   * @param {Object} formValues - 表单的字段值
+   */
+  const onSubmit = async (formValues) => {
     setIsSubmitting(true)
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const { grade, wordCount, title } = formValues
+      
+      // 存储表单数据到本地存储
+      const formData = {
+        title,
+        grade,
+        wordCount,
+        imageCount: images.length,
+        submittedAt: new Date().toISOString()
+      }
+      localStorage.setItem('essayFormData', JSON.stringify(formData))
+      
+      // 从本地存储获取现有记录或初始化空数组
+      const existingRecords = JSON.parse(localStorage.getItem('correctionRecords') || '[]')
+      
+      // 创建新记录并设置加载状态
+      const newRecord = {
+        id: Date.now(), // 使用时间戳作为临时ID
+        ...formData,
+        status: "processing"
+      }
+      
+      // 将新记录添加到列表开头
+      const updatedRecords = [newRecord, ...existingRecords]
+      localStorage.setItem('correctionRecords', JSON.stringify(updatedRecords))
+      
+      // 导航到批改记录页面
+      router.push("/correction-records")
+      
+      // 继续在后台处理
+      if (images.length > 0) {
+        setSubmitProgress("正在处理作文...")
+        
+        // 使用第一张图片的文本和ID进行工作流API调用
+        const myHeaders = new Headers();
+        myHeaders.append("Authorization", "Bearer app-ILbJeMTBKKxhcbjZ0sewOkOJ");
+        myHeaders.append("User-Agent", "Apifox/1.0.0 (https://apifox.com)");
+        myHeaders.append("Content-Type", "application/json");
+
+        const raw = JSON.stringify({
+          "inputs": {
+            "images": {
+              "type": "image",
+              "transfer_method": "local_file",
+              "upload_file_id": images[0].id
+            }
+          },
+          "response_mode": "blocking",
+          "user": "abc"
+        });
+
+        const requestOptions = {
+          method: 'POST',
+          headers: myHeaders,
+          body: raw
+        };
+
+        const workflowResponse = await fetch("https://llm.ubtrobot.com/v1/workflows/run", requestOptions);
+        
+        if (!workflowResponse.ok) {
+          throw new Error('工作流API调用失败');
+        }
+        
+        const workflowResult = await workflowResponse.json();
+        setApiResponse(workflowResult);
+        
+        // 从工作流响应中提取原始文本
+        const extractedText = workflowResult.data.outputs.text || "";
+        console.log("原始文本:", extractedText);
+
+        // 将原始文本存储到本地存储
+        localStorage.setItem('originalEssayText', extractedText);
+        
+        // 进行第二次API调用以获取批改结果
+        const correctionHeaders = new Headers();
+        correctionHeaders.append("Authorization", "Bearer app-8D9vfdkoqQBmAkF5RcONcjMC");
+        correctionHeaders.append("User-Agent", "Apifox/1.0.0 (https://apifox.com)");
+        correctionHeaders.append("Content-Type", "application/json");
+
+        const correctionBody = JSON.stringify({
+          "inputs": {
+            "orign_text": extractedText,
+            "require_word_count": wordCount,
+            "require_theme": title || "无"
+          },
+          "response_mode": "blocking",
+          "user": "abc"
+        });
+
+        const correctionOptions = {
+          method: 'POST',
+          headers: correctionHeaders,
+          body: correctionBody
+        };
+
+        // 进行批改API调用
+        setSubmitProgress("正在获取批改结果...");
+        const correctionResponse = await fetch("https://llm.ubtrobot.com/v1/workflows/run", correctionOptions);
+        
+        if (!correctionResponse.ok) {
+          throw new Error('批改API调用失败');
+        }
+        
+        const correctionResult = await correctionResponse.json();
+        console.log("批改API响应:", correctionResult);
+        
+        // 在获取到结果后立即更新状态为"已完成"
+        const recordsToUpdate = JSON.parse(localStorage.getItem('correctionRecords') || '[]');
+        const recordIdx = recordsToUpdate.findIndex(r => r.id === newRecord.id);
+        if (recordIdx !== -1) {
+          recordsToUpdate[recordIdx].status = "completed";
+          localStorage.setItem('correctionRecords', JSON.stringify(recordsToUpdate));
+          console.log("状态已更新为完成");
+        } else {
+          console.error("未找到记录ID:", newRecord.id);
+        }
+
+        setIsSubmitting(false)
+        
+        // 将两个响应存储到本地存储
+        localStorage.setItem('workflowResponse', JSON.stringify(workflowResult));
+        localStorage.setItem('correctionResponse', JSON.stringify(correctionResult));
+        localStorage.setItem('workflowResult', JSON.stringify(correctionResult));
+              
+        // 更新记录状态为完成并添加工作流结果
+        const updatedRecords = JSON.parse(localStorage.getItem('correctionRecords') || '[]')
+        const recordIndex = updatedRecords.findIndex(r => r.id === newRecord.id)
+        if (recordIndex !== -1) {
+          updatedRecords[recordIndex].status = "completed";
+          updatedRecords[recordIndex].originalText = extractedText;
+          updatedRecords[recordIndex].workflowResult = workflowResult;
+          updatedRecords[recordIndex].correctionResult = correctionResult;
+          // 在记录中存储API输出以供报告显示
+          if (correctionResult.data && correctionResult.data.outputs) {
+            updatedRecords[recordIndex].outputResults = correctionResult.data.outputs;
+          } else if (correctionResult.outputs) {
+            updatedRecords[recordIndex].outputResults = correctionResult.outputs;
+          }
+          localStorage.setItem('correctionRecords', JSON.stringify(updatedRecords))
+        }
+      }
+    } catch (error) {
+      console.error("提交错误:", error);
+      
+      // 更新记录状态为错误
+      const updatedRecords = JSON.parse(localStorage.getItem('correctionRecords') || '[]')
+      const recordIndex = updatedRecords.findIndex(r => r.id === newRecord.id)
+      if (recordIndex !== -1) {
+        updatedRecords[recordIndex].status = "error"
+        updatedRecords[recordIndex].error = error.message
+        localStorage.setItem('correctionRecords', JSON.stringify(updatedRecords))
+      }
+      localStorage.setItem('essaySubmissionError', error.message)
+    } finally {
       setIsSubmitting(false)
-      // Navigate to results page
-      router.push("/results")
-    }, 1500)
+    }
   }
 
-  const resetForm = () => {
-    setGrade("")
-    setWordCount("")
-    setTitle("")
-    setImages([])
-  }
-
-  // Feature data
+  // 功能数据
   const features = [
     {
       icon: FileText,
@@ -67,183 +277,192 @@ export default function Home() {
       description: "标注语法、用词、标点等各方面错误"
     },
     {
-      icon: Sparkles,
-      title: "提供改进",
-      description: "给出详细的改进建议和优化方案"
+      icon: BookOpen,
+      title: "改进建议",
+      description: "提供具体的改进建议和范文参考"
     },
     {
-      icon: BookOpen,
-      title: "成长追踪",
-      description: "记录学习历程，追踪写作能力提升"
+      icon: Sparkles,
+      title: "AI 批改",
+      description: "使用先进的AI技术进行智能批改"
     }
-  ];
+  ]
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tight mb-3">AI 作文批改系统</h1>
-        <p className="text-xl text-muted-foreground">智能批改，快速提升写作能力</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-        {features.map((feature, index) => (
-          <Card key={index} className="bg-card hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <feature.icon className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle className="text-xl">{feature.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">{feature.description}</p>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="flex items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">AI 作文批改系统</h1>
       </div>
 
-      <div className="grid md:grid-cols-12 gap-8 items-start">
-        <div className="md:col-span-4">
+      <div className="grid md:grid-cols-2 gap-8">
+        <div>
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">开始批改</CardTitle>
-              <CardDescription>上传你的作文，获得智能批改和反馈</CardDescription>
+              <CardTitle>提交作文</CardTitle>
+              <CardDescription>
+                上传作文图片，填写相关信息，开始智能批改
+              </CardDescription>
             </CardHeader>
-          </Card>
-        </div>
-        
-        <div className="md:col-span-8">
-          <Card>
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-6 pt-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="grade">年级选择</Label>
-                    <Select value={grade} onValueChange={setGrade} required>
-                      <SelectTrigger id="grade">
-                        <SelectValue placeholder="选择年级" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="primary1">一年级</SelectItem>
-                        <SelectItem value="primary2">二年级</SelectItem>
-                        <SelectItem value="primary3">三年级</SelectItem>
-                        <SelectItem value="primary4">四年级</SelectItem>
-                        <SelectItem value="primary5">五年级</SelectItem>
-                        <SelectItem value="primary6">六年级</SelectItem>
-                        <SelectItem value="junior1">初一</SelectItem>
-                        <SelectItem value="junior2">初二</SelectItem>
-                        <SelectItem value="junior3">初三</SelectItem>
-                        <SelectItem value="high1">高一</SelectItem>
-                        <SelectItem value="high2">高二</SelectItem>
-                        <SelectItem value="high3">高三</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="grade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>年级</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="选择年级" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="primary1">一年级</SelectItem>
+                            <SelectItem value="primary2">二年级</SelectItem>
+                            <SelectItem value="primary3">三年级</SelectItem>
+                            <SelectItem value="primary4">四年级</SelectItem>
+                            <SelectItem value="primary5">五年级</SelectItem>
+                            <SelectItem value="primary6">六年级</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                  <Separator />
+                  <FormField
+                    control={form.control}
+                    name="wordCount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>字数要求</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="请输入字数要求" 
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="wordCount">字数要求</Label>
-                    <Input 
-                      id="wordCount"
-                      type="number" 
-                      placeholder="输入字数要求" 
-                      value={wordCount}
-                      onChange={(e) => setWordCount(e.target.value)}
-                      min="1"
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <Label htmlFor="title">作文标题</Label>
-                    <Input 
-                      id="title"
-                      placeholder="输入作文标题" 
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
-                  </div>
-
-                  <Separator />
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>批改要求</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="请输入批改要求" 
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="space-y-2">
                     <Label>上传作文图片</Label>
-                    <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center">
-                      <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground mb-1">点击上传或拖拽文件到此处</p>
-                      <p className="text-xs text-muted-foreground mb-4">支持PNG、JPG格式</p>
-                      <input
-                        type="file"
-                        id="picture"
-                        className="hidden"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageUpload}
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={() => document.getElementById('picture').click()}
-                        type="button"
-                      >
-                        选择文件
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {images.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>已上传图片 ({images.length})</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       {images.map((image, index) => (
-                        <div key={index} className="relative rounded-md overflow-hidden group">
-                          <img 
-                            src={image.preview} 
-                            alt={`上传的图片 ${index + 1}`}
-                            className="h-24 w-full object-cover" 
+                        <div key={index} className="relative">
+                          <Image
+                            src={image.preview}
+                            alt={`作文图片 ${index + 1}`}
+                            width={200}
+                            height={200}
+                            className="rounded-lg object-cover"
                           />
                           <Button
                             type="button"
                             variant="destructive"
                             size="icon"
-                            className="absolute top-1 right-1 h-6 w-6 opacity-80 hover:opacity-100"
+                            className="absolute top-2 right-2"
                             onClick={() => removeImage(index)}
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
+                      {images.length < 4 && (
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            id="image-upload"
+                            multiple
+                          />
+                          <label
+                            htmlFor="image-upload"
+                            className="flex flex-col items-center justify-center w-full h-full min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
+                          >
+                            <Upload className="h-8 w-8 text-gray-400" />
+                            <span className="mt-2 text-sm text-gray-500">
+                              点击上传图片
+                            </span>
+                          </label>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
-              </CardContent>
-              
-              <CardFooter className="flex justify-between">
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={resetForm}
-                >
-                  重置
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting || !grade || !title || images.length === 0}
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
-                      <span>提交中...</span>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={isSubmitting || images.length === 0}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {submitProgress}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        提交批改
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>功能特点</CardTitle>
+              <CardDescription>
+                了解我们的智能批改系统的主要功能
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                {features.map((feature, index) => (
+                  <div key={index} className="flex items-start space-x-4">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <feature.icon className="h-6 w-6 text-primary" />
                     </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <Send className="mr-2 h-4 w-4" /> 提交作文
+                    <div>
+                      <h3 className="font-medium">{feature.title}</h3>
+                      <p className="text-sm text-gray-500">{feature.description}</p>
                     </div>
-                  )}
-                </Button>
-              </CardFooter>
-            </form>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
           </Card>
         </div>
       </div>

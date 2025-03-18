@@ -2,25 +2,23 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Book, Dumbbell } from 'lucide-react'
+import { NAV_ITEMS } from '@/lib/constants'
 
+/**
+ * 侧边导航组件
+ * 在桌面/平板设备上显示的主导航栏
+ */
 export function SideNav() {
   const pathname = usePathname()
   
-  const navItems = [
-    { name: '首页', href: '/', icon: Home },
-    { name: '错题本', href: '/error-book', icon: Book },
-    { name: '练习', href: '/exercise', icon: Dumbbell },
-  ]
-  
   return (
-    <div className="h-full border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 pt-6">
+    <div className="h-full w-full border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 pt-6">
       <div className="px-4 mb-8">
         <h1 className="text-xl font-bold text-center">AI 作文批改系统</h1>
       </div>
       
       <nav className="space-y-1 px-3">
-        {navItems.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || 
                           (item.href !== '/' && pathname.startsWith(item.href))
           const Icon = item.icon
