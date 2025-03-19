@@ -3,10 +3,12 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { NAV_ITEMS } from '@/lib/constants'
+import { ZhangButton } from '@/components/zhang'
 
 /**
  * 底部导航组件
  * 在移动设备上显示的主导航栏
+ * 使用章同学UI组件风格
  */
 export function BottomNav() {
   const pathname = usePathname()
@@ -23,14 +25,15 @@ export function BottomNav() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full text-xs font-medium transition-colors ${
-                isActive 
-                  ? 'text-primary' 
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50'
-              }`}
+              className="flex-1"
             >
-              <Icon className="w-5 h-5 mb-1" />
-              <span>{item.name}</span>
+              <ZhangButton
+                variant={isActive ? "default" : "ghost"}
+                className="flex flex-col items-center justify-center w-full h-full text-xs font-medium transition-colors border-none"
+              >
+                <Icon className="w-5 h-5 mb-1" />
+                <span>{item.name}</span>
+              </ZhangButton>
             </Link>
           )
         })}

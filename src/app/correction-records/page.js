@@ -12,14 +12,19 @@ import {
   Loader2,
   RefreshCw
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { 
+  ZhangButton, 
+  ZhangCard, 
+  ZhangAvatar, 
+  ZhangBubble 
+} from "@/components/zhang"
 import { Badge } from "@/components/ui/badge"
 import { GRADE_MAP } from "@/lib/constants"
 
 /**
  * 批改记录页面组件
  * 显示用户提交的所有作文批改记录列表
+ * 使用章同学UI组件风格
  */
 export default function CorrectionRecords() {
   const router = useRouter()
@@ -123,14 +128,28 @@ export default function CorrectionRecords() {
     }
   }
 
+  // 根据状态获取章同学的表情
+  const getZhangMood = (status) => {
+    switch (status) {
+      case "processing":
+        return "thinking"
+      case "completed":
+        return "happy"
+      case "error":
+        return "sad"
+      default:
+        return "default"
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/")} className="mr-4 hover:bg-blue-50 transition-colors">
+        <ZhangButton variant="ghost" size="icon" onClick={() => router.push("/")} className="mr-4">
           <ArrowLeft className="h-5 w-5" />
-        </Button>
+        </ZhangButton>
         <h1 className="text-3xl font-bold text-gray-800">批改记录</h1>
-        <Button 
+        <ZhangButton 
           variant="outline" 
           size="sm" 
           onClick={handleRefresh} 
@@ -139,18 +158,30 @@ export default function CorrectionRecords() {
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           刷新
-        </Button>
+        </ZhangButton>
       </div>
 
       <div className="grid gap-6">
         {records.length > 0 ? (
           records.map((record) => (
-            <Card key={record.id} className="overflow-hidden border shadow-md rounded-xl hover:shadow-lg transition-shadow">
+            <ZhangCard 
+              key={record.id} 
+              highlighted={record.status === "completed"}
+              withBubbles={record.status === "completed"}
+              className="overflow-hidden shadow-md rounded-xl hover:shadow-lg transition-shadow"
+            >
               <div className="grid md:grid-cols-12">
                 <div className="md:col-span-4 bg-blue-50 p-6">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                    {getGradeDisplayName(record.grade)}
-                  </h3>
+                  <div className="flex items-center mb-3">
+                    <ZhangAvatar 
+                      mood={getZhangMood(record.status)} 
+                      size="md" 
+                      className="mr-3" 
+                    />
+                    <h3 className="text-xl font-semibold text-gray-800">
+                      {getGradeDisplayName(record.grade)}
+                    </h3>
+                  </div>
                   <div className="flex items-center text-sm text-gray-600 mb-2">
                     <Calendar className="h-4 w-4 mr-2" />
                     {formatDate(record.submittedAt)}
@@ -183,24 +214,29 @@ export default function CorrectionRecords() {
                 </div>
                 
                 <div className="md:col-span-2 flex items-center justify-center p-6 bg-gray-50 border-l">
-                  <Button 
+                  <ZhangButton 
                     onClick={() => handleViewReport(record.id)} 
                     disabled={record.status !== "completed"}
-                    className={`bg-blue-600 hover:bg-blue-700 transition-colors shadow-md w-full ${
+                    className={`w-full ${
                       record.status !== "completed" ? "opacity-50 cursor-not-allowed" : ""
                     }`}
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     查看报告
-                  </Button>
+                  </ZhangButton>
                 </div>
               </div>
-            </Card>
+            </ZhangCard>
           ))
         ) : (
-          <Card className="p-8 text-center">
-            <p className="text-gray-500">暂无批改记录</p>
-          </Card>
+          <ZhangCard className="p-8 text-center">
+            <div className="flex flex-col items-center">
+              <ZhangAvatar mood="thinking" size="lg" className="mb-4" />
+              <ZhangBubble>
+                <p className="text-gray-500">暂无批改记录</p>
+              </ZhangBubble>
+            </div>
+          </ZhangCard>
         )}
       </div>
     </div>

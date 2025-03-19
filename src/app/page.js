@@ -4,9 +4,15 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Send, Sparkles, BookOpen, FileText, PenLine, X, Upload, Loader2 } from "lucide-react"
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { 
+  ZhangButton, 
+  ZhangInput, 
+  ZhangTextarea, 
+  ZhangCard, 
+  ZhangAvatar, 
+  ZhangBubble, 
+  ZhangTentacleButton
+} from "@/components/zhang"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
@@ -16,6 +22,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 /**
  * 主页组件
  * 提供作文提交和批改功能的主界面
+ * 使用章同学UI组件风格
  */
 export default function Home() {
   const router = useRouter()
@@ -302,14 +309,14 @@ export default function Home() {
 
       <div className="grid md:grid-cols-2 gap-8">
         <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>提交作文</CardTitle>
-              <CardDescription>
+          <ZhangCard>
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold">提交作文</h2>
+              <p className="text-sm text-gray-500 mt-1">
                 上传作文图片，填写相关信息，开始智能批改
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-6">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
@@ -348,7 +355,7 @@ export default function Home() {
                       <FormItem>
                         <FormLabel>字数要求</FormLabel>
                         <FormControl>
-                          <Input 
+                          <ZhangInput 
                             type="number" 
                             placeholder="请输入字数要求" 
                             {...field}
@@ -366,7 +373,7 @@ export default function Home() {
                       <FormItem>
                         <FormLabel>批改要求</FormLabel>
                         <FormControl>
-                          <Input 
+                          <ZhangInput 
                             placeholder="请输入批改要求" 
                             {...field}
                           />
@@ -383,20 +390,19 @@ export default function Home() {
                         <div key={index} className="relative">
                           <Image
                             src={image.preview}
-                            alt={`作文图片 ${index + 1}`}
-                            width={200}
-                            height={200}
+                            alt={`上传的图片 ${index + 1}`}
                             className="rounded-lg object-cover"
+                            width={300}
+                            height={200}
                           />
-                          <Button
-                            type="button"
+                          <ZhangButton
                             variant="destructive"
                             size="icon"
                             className="absolute top-2 right-2"
                             onClick={() => removeImage(index)}
                           >
                             <X className="h-4 w-4" />
-                          </Button>
+                          </ZhangButton>
                         </div>
                       ))}
                       {images.length < 4 && (
@@ -434,7 +440,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <Button 
+                  <ZhangTentacleButton 
                     type="submit" 
                     className="w-full"
                     disabled={isSubmitting || images.length === 0}
@@ -450,22 +456,22 @@ export default function Home() {
                         提交批改
                       </>
                     )}
-                  </Button>
+                  </ZhangTentacleButton>
                 </form>
               </Form>
-            </CardContent>
-          </Card>
+            </div>
+          </ZhangCard>
         </div>
 
         <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>功能特点</CardTitle>
-              <CardDescription>
+          <ZhangCard>
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold">功能特点</h2>
+              <p className="text-sm text-gray-500 mt-1">
                 了解我们的智能批改系统的主要功能
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </div>
+            <div className="p-6">
               <div className="grid gap-4">
                 {features.map((feature, index) => (
                   <div key={index} className="flex items-start space-x-4">
@@ -479,8 +485,8 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </ZhangCard>
         </div>
       </div>
     </div>

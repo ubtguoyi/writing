@@ -5,35 +5,70 @@
 /* Explicitly set Noto Sans SC font for Chinese text */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* 章同学主题色系 */
+    --background: 200 33% 98%;
+    --foreground: 200 15% 29%;
     
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 200 15% 29%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 200 15% 29%;
     
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 195 77% 50%;  /* 活泼的海洋蓝 #1DAAE2 */
+    --primary-foreground: 0 0% 100%;
     
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 338 100% 68%;  /* 明亮粉色 #FF5C8D */
+    --secondary-foreground: 0 0% 100%;
     
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 200 33% 96%;
+    --muted-foreground: 200 15% 45%;
     
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 40 100% 60%;  /* 温暖黄色 #FFD234 */
+    --accent-foreground: 0 0% 20%;
     
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
     
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 200 33% 90%;
+    --input: 200 33% 90%;
+    --ring: 195 77% 50%;
     
-    --radius: 0.5rem;
+    --zhang-blue-light: 195 70% 84%;  /* 浅蓝色 #B9E5F3 */
+    --zhang-blue-dark: 195 86% 29%;   /* 深蓝色 #0A6D8D */
+    
+    --radius: 1rem;  /* 更圆润的边角 */
+  }
+  
+  /* 暗色模式（海底模式） */
+  .dark {
+    --background: 200 50% 12%;
+    --foreground: 200 10% 90%;
+    
+    --card: 200 50% 15%;
+    --card-foreground: 200 10% 90%;
+    
+    --popover: 200 50% 15%;
+    --popover-foreground: 200 10% 90%;
+    
+    --primary: 195 77% 45%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 338 90% 62%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 200 30% 20%;
+    --muted-foreground: 200 10% 70%;
+    
+    --accent: 40 90% 55%;
+    --accent-foreground: 0 0% 10%;
+    
+    --destructive: 0 74% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 200 40% 25%;
+    --input: 200 40% 25%;
+    --ring: 195 77% 45%;
   }
   
   html {
@@ -142,4 +177,64 @@
 .markdown-content a {
   color: #3b82f6;
   text-decoration: underline;
+} 
+
+/* 章同学应用特殊样式 */
+@layer components {
+  /* 按钮样式 */
+  .zhang-btn {
+    @apply rounded-xl px-4 py-2 font-medium transition-all duration-200 shadow-sm;
+  }
+  
+  .zhang-btn-primary {
+    @apply bg-secondary text-white hover:scale-105 hover:shadow-md;
+  }
+  
+  .zhang-btn-secondary {
+    @apply bg-white border-2 border-secondary text-secondary hover:bg-secondary/5;
+  }
+  
+  /* 卡片样式 */
+  .zhang-card {
+    @apply bg-white rounded-2xl shadow-sm p-4 border border-border relative overflow-hidden;
+  }
+  
+  .zhang-card-highlighted {
+    @apply bg-zhang-blue-light/30;
+  }
+  
+  /* 输入框样式 */
+  .zhang-input {
+    @apply rounded-lg bg-muted/50 border border-input px-3 py-2 text-sm
+    focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent
+    transition-all duration-200 hover:bg-muted/70;
+  }
+  
+  /* 导航样式 */
+  .zhang-nav-item {
+    @apply flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground
+    hover:bg-muted transition-colors duration-200;
+  }
+  
+  .zhang-nav-item-active {
+    @apply bg-secondary/10 text-secondary font-medium;
+  }
+  
+  /* 进度指示器 */
+  .zhang-progress {
+    @apply h-2 rounded-full bg-muted overflow-hidden;
+  }
+  
+  .zhang-progress-bar {
+    @apply h-full bg-gradient-to-r from-primary to-secondary rounded-full;
+  }
+  
+  /* 装饰元素 */
+  .zhang-bubble {
+    @apply absolute rounded-full bg-primary/10 animate-pulse;
+  }
+  
+  .zhang-tentacle {
+    @apply w-[3px] absolute bg-primary/30 rounded-full;
+  }
 } 

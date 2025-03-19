@@ -1,0 +1,46 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 章同学头部 - 蓝色章鱼 -->
+  <circle cx="100" cy="100" r="80" fill="#1DAAE2"/>
+  
+  <!-- 眼睛 - 惊讶的大眼睛 -->
+  <circle cx="70" cy="90" r="18" fill="white"/>
+  <circle cx="130" cy="90" r="18" fill="white"/>
+  <circle cx="70" cy="90" r="10" fill="black"/>
+  <circle cx="130" cy="90" r="10" fill="black"/>
+  
+  <!-- 眼睛的高光 -->
+  <circle cx="65" cy="85" r="4" fill="white"/>
+  <circle cx="125" cy="85" r="4" fill="white"/>
+  
+  <!-- 眼睫毛 -->
+  <path d="M55 75 Q 65 70, 75 75" stroke="black" stroke-width="2" fill="none"/>
+  <path d="M115 75 Q 125 70, 135 75" stroke="black" stroke-width="2" fill="none"/>
+  
+  <!-- 嘴巴 - 惊讶的O形 -->
+  <circle cx="100" cy="125" r="15" fill="#0A6D8D"/>
+  <circle cx="100" cy="125" r="10" fill="#FF5C8D" opacity="0.5"/>
+  
+  <!-- 帽子 - 粉色帽子（稍微往上） -->
+  <path d="M40 55 Q 100 15, 160 55 Q 150 35, 100 25 Q 50 35, 40 55 Z" fill="#FF5C8D"/>
+  <ellipse cx="100" cy="55" rx="60" ry="10" fill="#FF5C8D"/>
+  
+  <!-- 帽子顶部装饰 -->
+  <circle cx="100" cy="25" r="10" fill="#FF5C8D"/>
+  <circle cx="115" cy="52" r="7" fill="#FFD234"/>
+  
+  <!-- 脸颊 -->
+  <circle cx="60" cy="110" r="10" fill="#FF5C8D" opacity="0.5"/>
+  <circle cx="140" cy="110" r="10" fill="#FF5C8D" opacity="0.5"/>
+  
+  <!-- 水泡装饰 -->
+  <circle cx="40" cy="70" r="5" fill="white" opacity="0.6"/>
+  <circle cx="160" cy="80" r="3" fill="white" opacity="0.6"/>
+  <circle cx="50" cy="130" r="4" fill="white" opacity="0.6"/>
+  <circle cx="150" cy="120" r="6" fill="white" opacity="0.6"/>
+  
+  <!-- 惊讶的装饰 - 惊叹号 -->
+  <rect x="45" y="40" width="8" height="25" rx="4" fill="#FFD234"/>
+  <circle cx="49" cy="73" r="4" fill="#FFD234"/>
+  <rect x="145" y="40" width="8" height="25" rx="4" fill="#FFD234"/>
+  <circle cx="149" cy="73" r="4" fill="#FFD234"/>
+</svg> 
