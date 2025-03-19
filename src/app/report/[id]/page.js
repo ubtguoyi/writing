@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Download, Share2 } from "lucide-react"
 import { 
   Radar, 
@@ -11,10 +11,35 @@ import {
   PolarRadiusAxis, 
   ResponsiveContainer 
 } from "recharts"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
-export default function Report({ params }) {
+// Function to preprocess wrong_words data for better Markdown rendering
+const preprocessWrongWords = (wrongWordsText) => {
+  if (!wrongWordsText) return '';
+  
+  // Replace simple line breaks with double line breaks for proper Markdown paragraphs
+  let processed = wrongWordsText.replace(/\n(?!\n)/g, '\n\n');
+  
+  // Format error type headers with proper Markdown syntax
+  processed = processed.replace(/\*\*错误类型\*\*:/g, '## 错误类型:');
+  processed = processed.replace(/\*\*错误词汇\*\*:/g, '## 错误词汇:');
+  processed = processed.replace(/\*\*句子\*\*:/g, '## 句子:');
+  processed = processed.replace(/\*\*错误原因\*\*:/g, '## 错误原因:');
+  
+  // Replace the dash with a bullet point for list items
+  processed = processed.replace(/- \*\*错误类型\*\*:/g, '## 错误类型:');
+  
+  // Replace spaces (力气) with strong emphasis (**力气**)
+  processed = processed.replace(/"([^"]*)"/g, '**$1**');
+  
+  return processed;
+};
+
+export default function Report() {
   const router = useRouter()
-  const { id } = params
+  const params = useParams()
+  const essayId = Array.isArray(params?.id) ? params.id[0] : params?.id || ""
   
   const [essay, setEssay] = useState({
     id: 1,
@@ -25,159 +50,47 @@ export default function Report({ params }) {
     content: "",
     images: [],
     scores: {
-      content: 85,
-      structure: 78,
-      language: 90,
-      creativity: 82,
-      logic: 75
+      content: 0,
+      structure: 0,
+      language: 0,
+      creativity: 0,
+      logic: 0
     },
-    corrections: [
-      {
-        original: "蓝蓝的天空",
-        suggestion: "湛蓝的天空",
-        reason: "用更丰富的词汇表达颜色深度"
-      },
-      {
-        original: "那感觉真是太棒了",
-        suggestion: "那种成就感令人难以忘怀",
-        reason: "避免口语化表达，使用更正式的书面语言"
-      }
-    ],
-    comments: [
-      "文章结构清晰，有明确的开头、中间和结尾",
-      "内容丰富，描述了多种暑假活动",
-      "可以增加一些细节描写，使文章更生动",
-      "部分句子较为口语化，可以使用更多书面语表达"
-    ],
-    suggestions: [
-      "增加更多感官描写，如声音、气味等",
-      "可以尝试使用更多的修辞手法，如比喻、拟人等",
-      "适当增加一些过渡句，使文章更连贯"
-    ],
-    detailedCorrections: {
-      paragraphs: [
-        {
-          original: "",
-          corrections: [
-            {
-              original: "蓝蓝的天空",
-              suggestion: "湛蓝的天空",
-              reason: "用更丰富的词汇表达颜色深度"
-            },
-            {
-              original: "风景非常美丽",
-              suggestion: "风景如画",
-              reason: "使用成语增加文采"
-            }
-          ]
-        },
-        {
-          original: "",
-          corrections: [
-            {
-              original: "那感觉真是太棒了",
-              suggestion: "那种成就感令人难以忘怀",
-              reason: "避免口语化表达，使用更正式的书面语言"
-            },
-            {
-              original: "学习了很多有趣的科学知识",
-              suggestion: "接触到了许多引人入胜的科学知识",
-              reason: "用更生动的词汇表达学习体验"
-            }
-          ]
-        }
-      ]
+    scoreReasons: {
+      content: "",
+      structure: "",
+      language: "",
+      creativity: "",
+      logic: ""
     },
-    improvementPlan: [
-      {
-        category: "词汇运用",
-        suggestions: [
-          "增加高级词汇和成语的使用频率",
-          "注意避免口语化表达，提高书面语言的正式性",
-          "丰富描写词汇，特别是形容词的多样化"
-        ]
-      },
-      {
-        category: "句式结构",
-        suggestions: [
-          "适当使用复合句，增加文章的层次感",
-          "尝试运用排比句增强表达效果",
-          "注意句式的变化，避免重复使用相同句型"
-        ]
-      },
-      {
-        category: "内容深度",
-        suggestions: [
-          "增加对内心感受的描写，不仅描述事件还要表达情感",
-          "适当加入思考和感悟，体现个人成长",
-          "细化场景描写，增强文章的沉浸感"
-        ]
-      }
-    ]
+    paragraphs: [],
+    wrong_char: {},
+    wrong_sentence: [],
+    wrong_words: ""
   })
 
   const [activeTab, setActiveTab] = useState("作文评分")
 
   useEffect(() => {
-    // Load form data and workflow result from localStorage
-    const formDataString = localStorage.getItem('essayFormData');
-    const workflowResultString = localStorage.getItem('workflowResult');
-    const directEssayText = localStorage.getItem('essayText');
-    
-    // Try to get correction records to find the specific report data
+    // Only load correction records from localStorage
     const correctionRecords = JSON.parse(localStorage.getItem('correctionRecords') || '[]');
-    const recordData = correctionRecords.find(record => record.id === parseInt(id));
+    const recordData = correctionRecords.find(record => record.id === parseInt(essayId));
     
-    // Try to get form data
-    let formData = null;
-    if (formDataString) {
-      try {
-        formData = JSON.parse(formDataString);
-      } catch (error) {
-        // Error handling for form data parsing
-      }
+    if (!recordData) {
+      console.error("未找到ID为", essayId, "的记录数据");
+      return;
     }
     
-    // Try to get essay text from different sources
+    // Log record data to check format
+    console.log("Record data:", recordData);
+    
+    // Try to get essay text from the record data
     let essayText = "";
     
-    // First priority: Get from the specific record
+    // Get from the specific record
     if (recordData && recordData.originalText) {
       essayText = recordData.originalText;
-    }
-    // Second try: Direct essay text from localStorage
-    else if (directEssayText) {
-      essayText = directEssayText;
-    } 
-    // Third try: Extract from workflow result
-    else if (workflowResultString) {
-      try {
-        const workflowResult = JSON.parse(workflowResultString);
-        
-        if (workflowResult?.outputs?.text) {
-          essayText = workflowResult.outputs.text;
-        } else if (workflowResult?.data?.outputs?.text) {
-          essayText = workflowResult.data.outputs.text;
-        } else if (typeof workflowResult.outputs === 'object') {
-          // If outputs is an object but doesn't have text directly
-          // Try to get text from any property that might contain it
-          for (const key in workflowResult.outputs) {
-            if (typeof workflowResult.outputs[key] === 'string') {
-              essayText = workflowResult.outputs[key];
-              break;
-            } else if (workflowResult.outputs[key]?.text) {
-              essayText = workflowResult.outputs[key].text;
-              break;
-            }
-          }
-        }
-      } catch (error) {
-        // Error handling for workflow result parsing
-      }
-    }
-    
-    // Provide fallback text if empty
-    if (!essayText) {
+    } else {
       essayText = "无法获取作文内容，请检查API响应格式。";
     }
     
@@ -186,6 +99,9 @@ export default function Report({ params }) {
     
     // Check if we have API outputs from record data
     const outputData = recordData?.outputResults || {};
+    
+    // Log output data to check structure
+    console.log("Output data:", outputData);
     
     // Extract score information from output data
     let scoreData = {
@@ -196,143 +112,247 @@ export default function Report({ params }) {
       logic: 0
     };
     
-    // Extract corrections from output data
-    let corrections = [];
+    // Create an array to store reasons for each score category
+    let scoreReasons = {
+      content: "",
+      structure: "",
+      language: "",
+      creativity: "",
+      logic: ""
+    };
     
-    // Process the output data to extract scores and corrections
+    // Process the output data to extract scores and reasons
     if (outputData) {
-      // Extract base score (全文无错别字)
-      if (outputData.base && typeof outputData.base === 'string') {
-        try {
-          const baseData = JSON.parse(outputData.base);
+      try {
+        // First, check if outputResults is already an object and not a string
+        let parsedOutput = outputData;
+        
+        // If outputResults is a string, try to parse it
+        if (typeof outputData === 'string') {
+          try {
+            parsedOutput = JSON.parse(outputData);
+          } catch (e) {
+            console.error("Error parsing outputResults string:", e);
+          }
+        }
+        
+        console.log("Parsed output data:", parsedOutput);
+        
+        // Extract base score
+        if (parsedOutput.base) {
+          let baseData = parsedOutput.base;
+          
+          // If base is a string, try to parse it
+          if (typeof baseData === 'string') {
+            try {
+              baseData = JSON.parse(baseData);
+            } catch (e) {
+              console.error("Error parsing base data:", e);
+            }
+          }
+          
+          console.log("Processed base data:", baseData);
+          
           if (baseData.score_num) {
-            scoreData.content = baseData.score_num * 0.2;
+            scoreData.logic = Number(baseData.score_num); // Use original scale (0-20)
+            scoreReasons.logic = baseData.reason || "";
           }
-        } catch (e) {
-          console.error("Error parsing base data", e);
         }
-      }
-      
-      // Extract construction score (这篇文章结构严谨)
-      if (outputData.construction && typeof outputData.construction === 'string') {
-        try {
-          const constructionData = JSON.parse(outputData.construction);
+        
+        // Extract construction score
+        if (parsedOutput.construction) {
+          let constructionData = parsedOutput.construction;
+          
+          // If construction is a string, try to parse it
+          if (typeof constructionData === 'string') {
+            try {
+              constructionData = JSON.parse(constructionData);
+            } catch (e) {
+              console.error("Error parsing construction data:", e);
+            }
+          }
+          
+          console.log("Processed construction data:", constructionData);
+          
           if (constructionData.score_sum) {
-            scoreData.structure = constructionData.score_sum * 0.8;
+            scoreData.structure = Number(constructionData.score_sum); // Use original scale (0-20)
+            scoreReasons.structure = constructionData.reason || "";
           }
-        } catch (e) {
-          console.error("Error parsing construction data", e);
         }
-      }
-      
-      // Extract content score (这篇作文内容充实)
-      if (outputData.content && typeof outputData.content === 'string') {
-        try {
-          const contentData = JSON.parse(outputData.content);
+        
+        // Extract content score
+        if (parsedOutput.content) {
+          let contentData = parsedOutput.content;
+          
+          // If content is a string, try to parse it
+          if (typeof contentData === 'string') {
+            try {
+              contentData = JSON.parse(contentData);
+            } catch (e) {
+              console.error("Error parsing content data:", e);
+            }
+          }
+          
+          console.log("Processed content data:", contentData);
+          
           if (contentData.score_sum) {
-            scoreData.content = contentData.score_sum * 0.8;
+            // Update or supplement the content score
+            if (scoreData.content === 0) {
+              scoreData.content = Number(contentData.score_sum); // Use original scale
+            } else {
+              scoreData.content = (scoreData.content + Number(contentData.score_sum) * 10) / 2; // Average if both exist
+            }
+            scoreReasons.content += (scoreReasons.content ? " " : "") + (contentData.reason || "");
+          }
+        }
+        
+        // Extract language score
+        if (parsedOutput.language) {
+          let languageData = parsedOutput.language;
+          
+          // If language is a string, try to parse it
+          if (typeof languageData === 'string') {
+            try {
+              languageData = JSON.parse(languageData);
+            } catch (e) {
+              console.error("Error parsing language data:", e);
+            }
           }
           
-          // Add this as a correction
-          corrections.push({
-            original: "内容表达",
-            suggestion: "优化内容表达",
-            reason: contentData.reason || "提升文章内容的表达方式"
-          });
-        } catch (e) {
-          console.error("Error parsing content data", e);
-        }
-      }
-      
-      // Extract language score (这篇文章在结构上非常清晰)
-      if (outputData.language && typeof outputData.language === 'string') {
-        try {
-          const languageData = JSON.parse(outputData.language);
           if (languageData.score_sum) {
-            scoreData.language = languageData.score_sum * 0.8;
+            scoreData.language = Number(languageData.score_sum); // Use original scale
+            scoreReasons.language = languageData.reason || "";
+          }
+        }
+        
+        // Extract theme score
+        if (parsedOutput.theme) {
+          let themeData = parsedOutput.theme;
+          
+          // If theme is a string, try to parse it
+          if (typeof themeData === 'string') {
+            try {
+              themeData = JSON.parse(themeData);
+            } catch (e) {
+              console.error("Error parsing theme data:", e);
+            }
           }
           
-          // Add this as a correction
-          corrections.push({
-            original: "语言使用",
-            suggestion: "优化语言表达",
-            reason: languageData.reason || "提升文章的语言表达"
-          });
-        } catch (e) {
-          console.error("Error parsing language data", e);
-        }
-      }
-      
-      // Extract theme score (这篇作文主题明确)
-      if (outputData.theme && typeof outputData.theme === 'string') {
-        try {
-          const themeData = JSON.parse(outputData.theme);
+          console.log("Processed theme data:", themeData);
+          
           if (themeData.score_sum) {
-            scoreData.creativity = themeData.score_sum * 0.8;
+            scoreData.creativity = Number(themeData.score_sum); // Use original scale (0-20)
+            scoreReasons.creativity = themeData.reason || "";
           }
-          
-          // Add this as a correction
-          corrections.push({
-            original: "主题表达",
-            suggestion: "优化主题表达",
-            reason: themeData.reason || "使主题表达更加明确"
-          });
-        } catch (e) {
-          console.error("Error parsing theme data", e);
         }
-      }
-      
-      // Extract correct_text if available
-      if (outputData.correct_text && typeof outputData.correct_text === 'string') {
-        try {
-          const correctText = JSON.parse(outputData.correct_text);
+
+                // Extract theme score
+                if (parsedOutput.language) {
+                  let languageData = parsedOutput.language;
+                  
+                  // If theme is a string, try to parse it
+                  if (typeof languageData === 'string') {
+                    try {
+                      languageData = JSON.parse(languageData);
+                    } catch (e) {
+                      console.error("Error parsing theme data:", e);
+                    }
+                  }
+                  
+                  console.log("Processed language data:", languageData);
+                  
+                  if (languageData.score_sum) {
+                    scoreData.language = Number(languageData.score_sum); // Convert to 100-point scale
+                    scoreReasons.language = languageData.reason || "";
+                  }
+                }
+
+                console.log("scoreData", scoreData);
+                console.log("scoreReasons", scoreReasons);
+        
+        // Calculate total score
+        const totalScore = Object.values(scoreData).reduce((sum, score) => sum + score, 0);
+        console.log("Total score:", totalScore);
+        
+        // Extract logic score
+        if (parsedOutput.correct_text) {
+          let correctText = parsedOutput.correct_text;
           
-          if (correctText.reason) {
-            corrections.push({
-              original: "原文表述",
-              suggestion: "修改为更准确的表述",
-              reason: correctText.reason || "提升文章的表达准确性"
-            });
-          }
-        } catch (e) {
-          console.error("Error parsing correct_text data", e);
-        }
+          // No need to JSON parse correct_text
+          console.log("Processed correct_text data:", correctText);
+          
+
+        } 
+        
+      } catch (e) {
+        console.error("Error processing outputResults:", e);
       }
     }
     
-    // Update essay state with the extracted data
+    // Extract correction data
+    let wrong_char = {};
+    let wrong_sentence = [];
+    let wrong_words = "";
+    
+    // Process the output data to extract correction data
+    if (outputData) {
+      try {
+        // Parse wrong_char if it exists as a string
+        if (outputData.wrong_char) {
+          try {
+            if (typeof outputData.wrong_char === 'string') {
+              wrong_char = JSON.parse(outputData.wrong_char);
+            } else {
+              wrong_char = outputData.wrong_char;
+            }
+            console.log("Processed wrong_char:", wrong_char);
+          } catch (e) {
+            console.error("Error parsing wrong_char:", e);
+          }
+        }
+        
+        // Get wrong_sentence if it exists
+        if (outputData.wrong_sentence) {
+          if (Array.isArray(outputData.wrong_sentence)) {
+            wrong_sentence = outputData.wrong_sentence;
+          } else if (typeof outputData.wrong_sentence === 'string') {
+            try {
+              wrong_sentence = JSON.parse(outputData.wrong_sentence);
+            } catch (e) {
+              console.error("Error parsing wrong_sentence:", e);
+            }
+          }
+          console.log("Processed wrong_sentence:", wrong_sentence);
+        }
+        
+        // Get wrong_words if it exists
+        if (outputData.wrong_words) {
+          wrong_words = outputData.wrong_words;
+          console.log("Processed wrong_words:", wrong_words);
+        }
+      } catch (e) {
+        console.error("Error processing correction data:", e);
+      }
+    }
+    
+    // Update state with extracted data from record
     setEssay(prev => ({
       ...prev,
-      title: formData?.title || recordData?.title || "",
-      grade: formData?.grade || recordData?.grade || "",
-      wordCount: formData?.wordCount || recordData?.wordCount || 0,
-      submittedAt: formData?.submittedAt || recordData?.submittedAt || "",
+      id: recordData.id,
+      title: recordData.title || "",
+      grade: recordData.grade || "",
+      wordCount: recordData.wordCount || 0,
+      submittedAt: recordData.submittedAt || "",
       content: essayText,
-      // Update scores based on API outputs
-      scores: {
-        ...prev.scores,
-        content: Math.round(scoreData.content) || prev.scores.content,
-        structure: Math.round(scoreData.structure) || prev.scores.structure,
-        language: Math.round(scoreData.language) || prev.scores.language,
-        creativity: Math.round(scoreData.creativity) || prev.scores.creativity,
-        logic: Math.round(scoreData.logic) || prev.scores.logic
-      },
-      // Update corrections with API data
-      corrections: corrections.length > 0 ? corrections : prev.corrections,
-      // Update detailedCorrections with actual paragraphs
-      detailedCorrections: {
-        ...prev.detailedCorrections,
-        paragraphs: paragraphs.map((p, index) => {
-          // Keep existing corrections if available, or use empty array
-          const existingCorrections = prev.detailedCorrections.paragraphs[index]?.corrections || [];
-          return {
-            original: p,
-            corrections: existingCorrections
-          };
-        })
-      }
+      paragraphs: paragraphs,
+      scores: scoreData,
+      scoreReasons: scoreReasons,
+      totalScore: Object.values(scoreData).reduce((sum, score) => sum + score, 0),
+      wrong_char: wrong_char,
+      wrong_sentence: wrong_sentence,
+      wrong_words: wrong_words
     }));
-  }, [id]);
+  }, [essayId]);
 
   const handleShare = () => {
     alert("分享功能即将上线")
@@ -340,23 +360,6 @@ export default function Report({ params }) {
   
   const handleDownload = () => {
     alert("下载功能即将上线")
-  }
-
-  // Calculate the total score from the individual scores
-  const calculateTotalScore = () => {
-    const { content, structure, language, creativity, logic } = essay.scores;
-    // Weight the scores according to importance
-    const weightedScore = (content * 0.3) + (structure * 0.2) + (language * 0.25) + (creativity * 0.15) + (logic * 0.1);
-    return Math.round(weightedScore);
-  }
-  
-  // Get the grade description based on the score
-  const getScoreGrade = (score) => {
-    if (score >= 90) return "优秀";
-    if (score >= 80) return "良好";
-    if (score >= 70) return "中等";
-    if (score >= 60) return "及格";
-    return "需提高";
   }
 
   return (
@@ -427,48 +430,54 @@ export default function Report({ params }) {
         </div>
 
         <div>
-          {/* 作文评分 Tab Content (renamed from 总体评价) */}
+          {/* 作文评分 Tab Content */}
           {activeTab === "作文评分" && (
             <div className="mb-10">
               <h3 className="text-lg font-medium mb-2">总体评分</h3>
-              <p className="text-xl font-bold mb-6">{calculateTotalScore()}分 <span className="text-sm font-normal text-gray-500">({getScoreGrade(calculateTotalScore())})</span></p>
+              <p className="text-xl font-bold mb-6">总分: {essay.totalScore} (各维度满分: 20，总分满分: 100)</p>
               
               <div style={{ width: '100%', height: 300 }} className="mb-6">
                 <ResponsiveContainer>
                   <RadarChart data={[
-                    { subject: '内容', A: essay.scores.content },
-                    { subject: '结构', A: essay.scores.structure },
-                    { subject: '语言', A: essay.scores.language },
-                    { subject: '创意', A: essay.scores.creativity },
-                    { subject: '逻辑', A: essay.scores.logic },
+                    { subject: '内容', A: Number(essay.scores.content) || 0, fullMark: 20 },
+                    { subject: '结构', A: Number(essay.scores.structure) || 0, fullMark: 20 },
+                    { subject: '语言', A: Number(essay.scores.language) || 0, fullMark: 20 },
+                    { subject: '主题', A: Number(essay.scores.creativity) || 0, fullMark: 20 },
+                    { subject: '卷面', A: Number(essay.scores.logic) || 0, fullMark: 20 },
                   ]}>
                     <PolarGrid />
                     <PolarAngleAxis dataKey="subject" />
-                    <PolarRadiusAxis domain={[0, 100]} />
+                    <PolarRadiusAxis angle={30} domain={[0, 20]} />
                     <Radar name="得分" dataKey="A" fill="#8884d8" fillOpacity={0.6} />
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
               
-              <div>
-                <h3 className="text-lg font-medium mb-3">评语</h3>
-                <ul className="space-y-2">
-                  {essay.comments.map((comment, index) => (
-                    <li key={index} className="text-gray-700">{comment}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mb-10 mt-10">
-                <h3 className="text-lg font-medium mb-3">修改建议</h3>
-                <div className="space-y-4">
-                  {essay.corrections.map((correction, index) => (
-                    <div key={index} className="border-l-4 border-yellow-400 pl-4 py-2 bg-yellow-50 rounded-r">
-                      <p className="text-gray-700">原文: <span className="line-through">{correction.original}</span></p>
-                      <p className="text-green-700 font-medium">建议: {correction.suggestion}</p>
-                      <p className="text-gray-500 text-sm mt-1">理由: {correction.reason}</p>
-                    </div>
-                  ))}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-4 border rounded-md bg-white">
+                  <h4 className="font-medium">内容</h4>
+                  <p className="text-2xl font-bold">{essay.scores.content}<span className="text-sm text-gray-500 ml-1">/20</span></p>
+                  <p className="text-sm text-gray-600 mt-2">{essay.scoreReasons.content || "暂无详细评分说明"}</p>
+                </div>
+                <div className="p-4 border rounded-md bg-white">
+                  <h4 className="font-medium">结构</h4>
+                  <p className="text-2xl font-bold">{essay.scores.structure}<span className="text-sm text-gray-500 ml-1">/20</span></p>
+                  <p className="text-sm text-gray-600 mt-2">{essay.scoreReasons.structure || "暂无详细评分说明"}</p>
+                </div>
+                <div className="p-4 border rounded-md bg-white">
+                  <h4 className="font-medium">语言</h4>
+                  <p className="text-2xl font-bold">{essay.scores.language}<span className="text-sm text-gray-500 ml-1">/20</span></p>
+                  <p className="text-sm text-gray-600 mt-2">{essay.scoreReasons.language || "暂无详细评分说明"}</p>
+                </div>
+                <div className="p-4 border rounded-md bg-white">
+                  <h4 className="font-medium">主题</h4>
+                  <p className="text-2xl font-bold">{essay.scores.creativity}<span className="text-sm text-gray-500 ml-1">/20</span></p>
+                  <p className="text-sm text-gray-600 mt-2">{essay.scoreReasons.creativity || "暂无详细评分说明"}</p>
+                </div>
+                <div className="p-4 border rounded-md bg-white">
+                  <h4 className="font-medium">卷面</h4>
+                  <p className="text-2xl font-bold">{essay.scores.logic}<span className="text-sm text-gray-500 ml-1">/20</span></p>
+                  <p className="text-sm text-gray-600 mt-2">{essay.scoreReasons.logic || "暂无详细评分说明"}</p>
                 </div>
               </div>
             </div>
@@ -477,114 +486,117 @@ export default function Report({ params }) {
           {/* 详细批改 Tab Content */}
           {activeTab === "详细批改" && (
             <div className="mb-10">
-              <div className="bg-gray-50 p-4 rounded-md mb-6">
-                <h3 className="text-lg font-medium mb-3">详细批改说明</h3>
-                <p className="text-gray-700">
-                  本批改通过对作文的逐段分析，提供语言表达、结构安排和内容深度的修改建议，以帮助提升写作水平。
-                </p>
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-3">错误文字</h3>
+                {Object.keys(essay.wrong_char).length > 0 ? (
+                  <div className="bg-white p-4 rounded-md border">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border p-2 text-left">错误文字</th>
+                          <th className="border p-2 text-left">错误类型</th>
+                          <th className="border p-2 text-left">正确文字</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(essay.wrong_char).map(([key, value], index) => (
+                          <tr key={index} className="border-b">
+                            <td className="border p-2">{value.wrong_char}</td>
+                            <td className="border p-2">{value.wrong_type}</td>
+                            <td className="border p-2">{value.correct_char}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">无错误文字</p>
+                )}
               </div>
 
-              {essay.detailedCorrections.paragraphs.map((paragraph, paragraphIndex) => (
-                <div key={paragraphIndex} className="mb-8 border rounded-md overflow-hidden">
-                  <div className="bg-gray-100 p-3">
-                    <h4 className="font-medium">段落 {paragraphIndex + 1}</h4>
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-3">错误句子</h3>
+                {essay.wrong_sentence && essay.wrong_sentence.length > 0 ? (
+                  <div className="bg-white p-4 rounded-md border">
+                    {essay.wrong_sentence.map((item, index) => (
+                      <div key={index} className="mb-4 pb-4 border-b last:border-b-0">
+                        <p className="font-medium text-gray-900 mb-2">问题句子 {index + 1}:</p>
+                        <p className="mb-2 pl-3 border-l-2 border-red-400">{item.sentence}</p>
+                        
+                        {item.think && (
+                          <div className="mt-2">
+                            <p className="font-medium text-gray-700">分析:</p>
+                            <p className="text-gray-600 pl-3">{item.think}</p>
+                          </div>
+                        )}
+                        
+                        {item.error_type && (
+                          <div className="mt-2">
+                            <p className="font-medium text-gray-700">错误类型:</p>
+                            <p className="text-gray-600 pl-3">{item.error_type}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-4">
-                    <p className="text-gray-700 mb-4 bg-gray-50 p-3 rounded whitespace-pre-line">{paragraph.original}</p>
-                    
-                    <h5 className="font-medium text-blue-600 mb-2">修改建议：</h5>
-                    <div className="space-y-4">
-                      {paragraph.corrections.map((correction, index) => (
-                        <div key={index} className="border-l-4 border-yellow-400 pl-4 py-2 bg-yellow-50 rounded-r">
-                          <p className="text-gray-700">原文: <span className="line-through">{correction.original}</span></p>
-                          <p className="text-green-700 font-medium">建议: {correction.suggestion}</p>
-                          <p className="text-gray-500 text-sm mt-1">理由: {correction.reason}</p>
-                        </div>
-                      ))}
+                ) : (
+                  <p className="text-gray-500">无错误句子</p>
+                )}
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-3">错误词汇</h3>
+                {essay.wrong_words ? (
+                  <div className="bg-white p-4 rounded-md border prose max-w-none">
+                    <div className="markdown-content">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // Customize how certain elements are rendered
+                          h2: ({node, ...props}) => <h2 className="text-lg font-semibold mt-4 mb-2 text-gray-800" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="text-base font-medium mt-3 mb-1 text-gray-700" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-3 text-gray-600" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
+                          li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                          table: ({node, ...props}) => <div className="overflow-x-auto"><table className="min-w-full border-collapse border border-gray-300" {...props} /></div>,
+                          th: ({node, ...props}) => <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-left" {...props} />,
+                          td: ({node, ...props}) => <td className="border border-gray-300 px-3 py-2" {...props} />,
+                          blockquote: ({node, ...props}) => (
+                            <blockquote className="border-l-4 border-red-300 pl-4 italic my-4 text-gray-700" {...props} />
+                          ),
+                          code: ({node, inline, ...props}) => (
+                            inline 
+                              ? <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props} />
+                              : <pre className="bg-gray-100 p-3 rounded overflow-x-auto my-4"><code {...props} /></pre>
+                          ),
+                          // Add special handling for strong elements to highlight error words
+                          strong: ({node, ...props}) => (
+                            <strong className="font-semibold text-red-600" {...props} />
+                          )
+                        }}
+                      >
+                        {preprocessWrongWords(essay.wrong_words)}
+                      </ReactMarkdown>
                     </div>
                   </div>
-                </div>
-              ))}
-
-              <div className="flex justify-end mt-6">
-                <button 
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  onClick={() => setActiveTab("作文提升")}
-                >
-                  查看改进建议
-                </button>
+                ) : (
+                  <p className="text-gray-500">无错误词汇</p>
+                )}
               </div>
             </div>
           )}
 
-          {/* 作文提升 Tab Content (renamed from 改进建议) */}
+          {/* 作文提升 Tab Content */}
           {activeTab === "作文提升" && (
             <div className="mb-10">
               <div className="bg-green-50 p-4 rounded-md mb-6 border border-green-100">
-                <h3 className="text-lg font-medium mb-3 text-green-800">改进建议概述</h3>
+                <h3 className="text-lg font-medium mb-3 text-green-800">作文提升功能开发中</h3>
                 <p className="text-gray-700">
-                  根据对您作文的分析，我们提供了以下针对性的改进建议，帮助您提升写作水平。建议按照计划逐步实践，循序渐进地提高各方面的写作能力。
+                  作文提升功能正在开发中，即将上线。此功能将根据作文分析，提供针对性的改进建议，帮助提升写作水平。
                 </p>
-              </div>
-
-              {essay.improvementPlan.map((category, categoryIndex) => (
-                <div key={categoryIndex} className="mb-6 border rounded-md overflow-hidden">
-                  <div className="bg-green-100 p-3">
-                    <h4 className="font-medium text-green-800">{category.category}</h4>
-                  </div>
-                  <div className="p-4">
-                    <ul className="space-y-2">
-                      {category.suggestions.map((suggestion, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="inline-block w-2 h-2 rounded-full bg-green-500 mt-2 mr-2"></span>
-                          <span className="text-gray-700">{suggestion}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-
-              <div className="mt-6 bg-gray-50 p-4 rounded-md">
-                <h3 className="text-lg font-medium mb-3">实践练习建议</h3>
-                <ul className="space-y-2">
-                  <li className="flex items-start">
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500 mt-2 mr-2"></span>
-                    <span className="text-gray-700">尝试用修改后的表达方式重写一篇类似主题的短文</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500 mt-2 mr-2"></span>
-                    <span className="text-gray-700">每天收集5个新的高级词汇或成语，并尝试在写作中应用</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500 mt-2 mr-2"></span>
-                    <span className="text-gray-700">练习将简单句改写为复合句，增加语言的复杂性</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="flex justify-end mt-6">
-                <button 
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  onClick={() => window.print()}
-                >
-                  打印改进计划
-                </button>
               </div>
             </div>
           )}
-
-          <div className="mb-10">
-            <h3 className="text-lg font-medium mb-3">改进建议</h3>
-            <ul className="space-y-2">
-              {essay.suggestions.map((suggestion, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="inline-block w-2 h-2 rounded-full bg-green-500 mt-2 mr-2"></span>
-                  <span className="text-gray-700">{suggestion}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
       </div>
     </div>

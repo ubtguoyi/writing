@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Send, Sparkles, BookOpen, FileText, PenLine, X, Upload, Loader2 } from "lucide-react"
 import Image from "next/image"
@@ -24,6 +24,22 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState("")
   const [apiResponse, setApiResponse] = useState(null)
+  
+  // Clear all localStorage items except correctionRecords when component mounts
+  useEffect(() => {
+    // Get the correctionRecords data first
+    const correctionRecords = localStorage.getItem('correctionRecords');
+    
+    // Clear all localStorage items
+    localStorage.clear();
+    
+    // Restore correctionRecords if it existed
+    if (correctionRecords) {
+      localStorage.setItem('correctionRecords', correctionRecords);
+    }
+    
+    console.log("清除了所有不必要的存储数据，只保留了批改记录");
+  }, []);
   
   // 初始化表单控制器
   const form = useForm({
@@ -108,7 +124,7 @@ export default function Home() {
     try {
       const { grade, wordCount, title } = formValues
       
-      // 存储表单数据到本地存储
+      // Create form data but don't store it in localStorage
       const formData = {
         title,
         grade,
@@ -116,7 +132,6 @@ export default function Home() {
         imageCount: images.length,
         submittedAt: new Date().toISOString()
       }
-      localStorage.setItem('essayFormData', JSON.stringify(formData))
       
       // 从本地存储获取现有记录或初始化空数组
       const existingRecords = JSON.parse(localStorage.getItem('correctionRecords') || '[]')
@@ -176,9 +191,6 @@ export default function Home() {
         const extractedText = workflowResult.data.outputs.text || "";
         console.log("原始文本:", extractedText);
 
-        // 将原始文本存储到本地存储
-        localStorage.setItem('originalEssayText', extractedText);
-        
         // 进行第二次API调用以获取批改结果
         const correctionHeaders = new Headers();
         correctionHeaders.append("Authorization", "Bearer app-8D9vfdkoqQBmAkF5RcONcjMC");
@@ -225,11 +237,6 @@ export default function Home() {
 
         setIsSubmitting(false)
         
-        // 将两个响应存储到本地存储
-        localStorage.setItem('workflowResponse', JSON.stringify(workflowResult));
-        localStorage.setItem('correctionResponse', JSON.stringify(correctionResult));
-        localStorage.setItem('workflowResult', JSON.stringify(correctionResult));
-              
         // 更新记录状态为完成并添加工作流结果
         const updatedRecords = JSON.parse(localStorage.getItem('correctionRecords') || '[]')
         const recordIndex = updatedRecords.findIndex(r => r.id === newRecord.id)
@@ -258,7 +265,6 @@ export default function Home() {
         updatedRecords[recordIndex].error = error.message
         localStorage.setItem('correctionRecords', JSON.stringify(updatedRecords))
       }
-      localStorage.setItem('essaySubmissionError', error.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -407,10 +413,21 @@ export default function Home() {
                             htmlFor="image-upload"
                             className="flex flex-col items-center justify-center w-full h-full min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
                           >
-                            <Upload className="h-8 w-8 text-gray-400" />
-                            <span className="mt-2 text-sm text-gray-500">
-                              点击上传图片
-                            </span>
+                            {isUploading ? (
+                              <>
+                                <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                                <span className="mt-2 text-sm text-gray-500">
+                                  正在上传...
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-8 w-8 text-gray-400" />
+                                <span className="mt-2 text-sm text-gray-500">
+                                  点击上传图片
+                                </span>
+                              </>
+                            )}
                           </label>
                         </div>
                       )}
