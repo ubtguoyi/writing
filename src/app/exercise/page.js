@@ -2,221 +2,203 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, X, Heart } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { 
   ZhangButton, 
-  ZhangCard, 
-  ZhangAvatar, 
-  ZhangBubble 
+  ZhangCard
 } from "@/components/zhang"
-import Image from "next/image"
+import storyThemes from '../story_themes.json'
 
-/**
- * 练习页面组件
- * 提供词汇、语法等学习练习题
- * 使用章同学UI组件风格
- */
-
-// 模拟题目数据
-const questions = [
-  {
-    id: 1,
-    image: "/exercise-image-1.jpg",
-    text: "小明在公园里_____地奔跑。",
-    blank: {
-      position: 4,
-      correctAnswer: "欢快"
-    },
-    options: ["欢快", "悲伤", "缓慢", "美丽", "开心"],
-    explanation: "欢快：表示愉快、高兴的样子，符合图中奔跑的状态"
-  },
-  {
-    id: 2,
-    image: "/exercise-image-2.jpg",
-    text: "他_____地笑着，看起来很开心。",
-    blank: {
-      position: 2,
-      correctAnswer: "灿烂"
-    },
-    options: ["灿烂", "悲伤", "生气", "害羞", "温柔"],
-    explanation: "灿烂：形容笑容明亮、愉快，与图中表情相符"
-  }
-]
-
-export default function Exercise() {
+export default function ExercisePage() {
   const router = useRouter()
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState("")
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [lives, setLives] = useState(3)
-  
-  const currentQuestion = questions[currentQuestionIndex]
-  
-  const handleAnswerSelect = (answer) => {
-    if (showFeedback) return
-    setSelectedAnswer(answer)
-  }
-  
-  const handleCheck = () => {
-    if (!selectedAnswer) return
-    setShowFeedback(true)
-    
-    if (selectedAnswer !== currentQuestion.blank.correctAnswer) {
-      setLives(lives - 1)
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const handleOptionClick = (option) => {
+    if (option === "错词练习") {
+      router.push("/exercise/word-practice")
     }
+    // 其他选项暂时不可点击
   }
-  
-  const isCorrect = selectedAnswer === currentQuestion.blank.correctAnswer
-  
-  const getZhangMood = () => {
-    if (!showFeedback) return "thinking"
-    return isCorrect ? "happy" : "sad"
-  }
-  
-  const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-      setSelectedAnswer("")
-      setShowFeedback(false)
-    } else {
-      // 练习完成
-      router.push("/")
-    }
-  }
-  
-  const handleRetry = () => {
-    setLives(3)
-    setCurrentQuestionIndex(0)
-    setSelectedAnswer("")
-    setShowFeedback(false)
-  }
-  
-  // 当没有生命值时游戏结束
-  if (lives === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="flex items-center mb-6">
-          <ZhangButton variant="ghost" size="icon" onClick={() => router.push("/")} className="mr-4">
-            <ArrowLeft className="h-5 w-5" />
-          </ZhangButton>
-          <h1 className="text-3xl font-bold text-gray-800">词汇练习</h1>
-        </div>
+
+  const handleGenerateStoryClick = async () => {
+    setIsGenerating(true)
+    // 从主题列表中随机选择一个主题
+    const themes = storyThemes.story_theme;
+    const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+
+    try {
+      const response = await fetch('https://llm.ubtrobot.com/v1/workflows/run', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer app-fQw6MmYMvUgO9PxJtiuTHfBg',
+          'User-Agent': 'Apifox/1.0.0 (https://apifox.com)',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          "inputs": {
+            "theme": randomTheme,
+            "grade": "三年级",
+            "words": String(JSON.parse(localStorage.getItem('wrongWords') || '[]').map(item => item.wrong_words))
+          },
+          "response_mode": "blocking",
+          "user": "abc-123"
+        })
+      });
+
+      const data = await response.json();
+      console.log(data);
+      
+      // 解析 outputs 中的 question_data 数组
+      if (data.data.outputs && data.data.outputs.question_data) {
+        console.log('原始 question_data:', data.data.outputs.question_data);
         
-        <ZhangCard className="p-8 text-center">
-          <div className="flex flex-col items-center">
-            <ZhangAvatar mood="sad" size="lg" className="mb-4" />
-            <ZhangBubble>
-              <h3 className="text-xl font-bold mb-2">游戏结束</h3>
-              <p className="text-gray-600 mb-6">你已经用完了所有生命值</p>
-              <ZhangButton onClick={handleRetry} className="mt-2">
-                重新开始
-              </ZhangButton>
-            </ZhangBubble>
-          </div>
-        </ZhangCard>
-      </div>
-    )
+        const parsedQuestions = [];
+        
+        // 检查question_data是数组还是对象
+        if (Array.isArray(data.data.outputs.question_data)) {
+          // 处理数组情况
+          data.data.outputs.question_data.forEach((item) => {
+            try {
+              // 基于截图，每项的格式应该是 "数字: "{\n \"question\": \"问题文本\"}"
+              // 例如: "0: "{\n \"question\": \"一天，夏同学...\"}"
+              if (typeof item === 'string') {
+                // 提取索引和问题内容
+                const match = item.match(/^(\d+):\s*"(.*)"$/);
+                
+                if (match && match.length === 3) {
+                  const index = parseInt(match[1], 10);
+                  let content = match[2];
+                  
+                  // 清理 JSON 字符串
+                  content = content
+                    .replace(/\\n/g, '\n')   // 替换 \n
+                    .replace(/\\"/g, '"')    // 替换 \"
+                    .replace(/\\\\/g, '\\'); // 替换 \\
+                  
+                  try {
+                    // 解析为 JSON 对象
+                    const questionObj = JSON.parse(content);
+                    parsedQuestions[index] = questionObj;
+                  } catch (parseError) {
+                    console.warn(`无法解析问题 ${index}`, parseError);
+                    // 如果解析失败，至少尝试提取问题文本
+                    const questionMatch = content.match(/"question":\s*"([^"]+)"/);
+                    if (questionMatch && questionMatch.length === 2) {
+                      parsedQuestions[index] = { question: questionMatch[1] };
+                    } else {
+                      parsedQuestions[index] = { question: content };
+                    }
+                  }
+                } else {
+                  // 如果不符合预期格式，尝试直接解析
+                  console.warn('项目格式不符合预期:', item);
+                  parsedQuestions.push({ question: item });
+                }
+              } else if (typeof item === 'object' && item !== null) {
+                // 如果已经是对象，直接添加
+                parsedQuestions.push(item);
+              }
+            } catch (e) {
+              console.warn('处理问题时出错:', e);
+              // 确保至少有一些内容被保存
+              parsedQuestions.push({ question: String(item) });
+            }
+          });
+        } else if (typeof data.data.outputs.question_data === 'object' && data.data.outputs.question_data !== null) {
+          // 处理对象情况 - 像截图中那样，键是数字，值是JSON字符串
+          Object.entries(data.data.outputs.question_data).forEach(([key, value]) => {
+            try {
+              // 尝试从值中提取问题内容
+              if (typeof value === 'string') {
+                let content = value;
+                
+                // 清理 JSON 字符串
+                content = content
+                  .replace(/\\n/g, '\n')   // 替换 \n
+                  .replace(/\\"/g, '"')    // 替换 \"
+                  .replace(/\\\\/g, '\\'); // 替换 \\
+                
+                try {
+                  // 解析为 JSON 对象
+                  const questionObj = JSON.parse(content);
+                  const index = parseInt(key, 10);
+                  parsedQuestions[index] = questionObj;
+                } catch (parseError) {
+                  console.warn(`无法解析问题 ${key}`, parseError);
+                  // 如果解析失败，至少尝试提取问题文本
+                  const questionMatch = content.match(/"question":\s*"([^"]+)"/);
+                  if (questionMatch && questionMatch.length === 2) {
+                    parsedQuestions[parseInt(key, 10)] = { question: questionMatch[1] };
+                  } else {
+                    parsedQuestions[parseInt(key, 10)] = { question: content };
+                  }
+                }
+              } else if (typeof value === 'object' && value !== null) {
+                // 如果已经是对象，直接添加
+                parsedQuestions[parseInt(key, 10)] = value;
+              }
+            } catch (e) {
+              console.warn('处理问题时出错:', e);
+              // 确保至少有一些内容被保存
+              parsedQuestions[parseInt(key, 10)] = { question: String(value) };
+            }
+          });
+        }
+        
+        // 移除数组中的空值并确保是连续的数组
+        const cleanedQuestions = parsedQuestions.filter(Boolean);
+        
+        // 将解析后的数据存储到 localStorage
+        localStorage.setItem('storyQuestions', JSON.stringify(cleanedQuestions));
+        console.log('故事问题已存储到 localStorage:', cleanedQuestions);
+      } else {
+        console.warn('API 响应中没有找到 question_data 数组:', data);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setIsGenerating(false);
+    }
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center mb-6">
         <ZhangButton variant="ghost" size="icon" onClick={() => router.push("/")} className="mr-4">
           <ArrowLeft className="h-5 w-5" />
         </ZhangButton>
-        <h1 className="text-3xl font-bold text-gray-800">词汇练习</h1>
-        
-        <div className="ml-auto flex items-center">
-          {[...Array(3)].map((_, i) => (
-            <Heart
-              key={i}
-              className={`w-6 h-6 ${i < lives ? "text-red-500 fill-red-500" : "text-gray-300"}`}
-            />
-          ))}
-        </div>
+        <h1 className="text-3xl font-bold text-gray-800">作文练习</h1>
       </div>
       
-      <ZhangCard>
-        <div className="p-6">
-          <div className="flex items-center mb-6">
-            <ZhangAvatar mood={getZhangMood()} size="md" className="mr-3" />
-            <div>
-              <h3 className="text-lg font-medium">题目 {currentQuestionIndex + 1}/{questions.length}</h3>
-              <p className="text-sm text-gray-500">选择最合适的词语填入句子空白处</p>
-            </div>
-          </div>
-          
-          {currentQuestion.image && (
-            <div className="mb-6 flex justify-center">
-              <div className="relative w-full h-64 rounded-lg overflow-hidden">
-                <Image
-                  src={currentQuestion.image}
-                  alt="题目图片"
-                  layout="fill"
-                  objectFit="cover"
-                />
-              </div>
-            </div>
-          )}
-          
-          <div className="mb-8">
-            <p className="text-lg text-center mb-6">{currentQuestion.text}</p>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {currentQuestion.options.map((option) => (
-                <ZhangButton
-                  key={option}
-                  variant={selectedAnswer === option ? "default" : "outline"}
-                  onClick={() => handleAnswerSelect(option)}
-                  className={`
-                    ${showFeedback && option === currentQuestion.blank.correctAnswer ? "bg-green-100 border-green-500 text-green-700" : ""}
-                    ${showFeedback && option === selectedAnswer && option !== currentQuestion.blank.correctAnswer ? "bg-red-100 border-red-500 text-red-700" : ""}
-                  `}
-                  disabled={showFeedback}
-                >
-                  {option}
-                </ZhangButton>
-              ))}
-            </div>
-          </div>
-          
-          {showFeedback ? (
-            <div className="space-y-4">
-              <ZhangBubble>
-                <div className="flex items-start">
-                  {isCorrect ? (
-                    <Check className="text-green-500 w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <X className="text-red-500 w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-                  )}
-                  <div>
-                    <p className={`font-medium ${isCorrect ? "text-green-700" : "text-red-700"}`}>
-                      {isCorrect ? "回答正确！" : "回答错误"}
-                    </p>
-                    <p className="text-gray-700 text-sm mt-1">{currentQuestion.explanation}</p>
-                  </div>
-                </div>
-              </ZhangBubble>
-              
-              <div className="flex justify-end">
-                <ZhangButton onClick={handleNext}>
-                  {currentQuestionIndex < questions.length - 1 ? "下一题" : "完成练习"}
-                </ZhangButton>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-end">
-              <ZhangButton 
-                onClick={handleCheck} 
-                disabled={!selectedAnswer}
-                className={!selectedAnswer ? "opacity-50 cursor-not-allowed" : ""}
-              >
-                检查答案
-              </ZhangButton>
-            </div>
-          )}
-        </div>
-      </ZhangCard>
+      <div className="space-y-4">
+        {/* 生成故事选项 - 可点击 */}
+        <ZhangCard 
+          className={`p-6 ${isGenerating ? 'cursor-wait' : 'cursor-pointer hover:shadow-md'} transition-shadow`}
+          onClick={isGenerating ? undefined : handleGenerateStoryClick}
+        >
+          <h2 className="text-xl font-semibold mb-2">生成故事</h2>
+          <p className="text-gray-600">
+            {isGenerating ? '正在生成故事中...' : '根据提示生成创意故事，提升写作能力'}
+          </p>
+        </ZhangCard>
+        
+        {/* 错词练习选项 - 生成故事时禁用 */}
+        <ZhangCard 
+          className={`p-6 ${isGenerating ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:shadow-md'} transition-shadow`}
+          onClick={isGenerating ? undefined : () => handleOptionClick("错词练习")}
+        >
+          <h2 className="text-xl font-semibold mb-2">错词练习</h2>
+          <p className="text-gray-600">选择最适合的词语填空，提高词汇运用能力</p>
+        </ZhangCard>
+        
+        {/* 尽情期待选项 - 禁用状态 */}
+        <ZhangCard 
+          className="p-6 cursor-not-allowed opacity-70"
+        >
+          <h2 className="text-xl font-semibold mb-2">尽情期待</h2>
+          <p className="text-gray-600">更多练习类型正在开发中，敬请期待！</p>
+        </ZhangCard>
+      </div>
     </div>
   )
-} 
+}

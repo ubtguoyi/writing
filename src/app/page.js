@@ -44,8 +44,9 @@ export default function Home() {
   
   // Clear all localStorage items except correctionRecords when component mounts
   useEffect(() => {
-    // Get the correctionRecords data first
+    // Get the correctionRecords and storyQuestions data first
     const correctionRecords = localStorage.getItem('correctionRecords');
+    const storyQuestions = localStorage.getItem('storyQuestions');
     
     // Clear all localStorage items
     localStorage.clear();
@@ -55,7 +56,12 @@ export default function Home() {
       localStorage.setItem('correctionRecords', correctionRecords);
     }
     
-    console.log("清除了所有不必要的存储数据，只保留了批改记录");
+    // Restore storyQuestions if it existed
+    if (storyQuestions) {
+      localStorage.setItem('storyQuestions', storyQuestions);
+    }
+    
+    console.log("清除了所有不必要的存储数据，只保留了批改记录和练习题目");
   }, []);
   
   // 初始化表单控制器

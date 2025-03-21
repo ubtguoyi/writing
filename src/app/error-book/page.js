@@ -148,7 +148,7 @@ export default function ErrorBook() {
           // 保持错误词汇原始结构
           wrongWords.forEach((item, index) => {
             if (item.wrong_words && item.wrong_words.trim() !== "") {
-              allErrors.push({
+              const wrongWordData = {
                 id: `word-${record.id}-${index}`,
                 errorType: "错误词汇",
                 wrong_words: item.wrong_words,
@@ -158,7 +158,21 @@ export default function ErrorBook() {
                 sentence: item.sentence || "",
                 date: recordDate,
                 essay: essayTitle
-              });
+              };
+              allErrors.push(wrongWordData);
+              
+              // 将错误词汇数据单独存储到localStorage，并进行去重
+              const storedWrongWords = JSON.parse(localStorage.getItem('wrongWords') || '[]');
+              // 检查是否已存在相同的错误词汇
+              const isDuplicate = storedWrongWords.some(word => 
+                word.wrong_words === wrongWordData.wrong_words && 
+                word.correct_words === wrongWordData.correct_words
+              );
+              
+              if (!isDuplicate) {
+                storedWrongWords.push(wrongWordData);
+                localStorage.setItem('wrongWords', JSON.stringify(storedWrongWords));
+              }
             }
           });
         } catch (e) {
