@@ -167,7 +167,7 @@ export default function ExercisePage() {
         <ZhangButton variant="ghost" size="icon" onClick={() => router.push("/")} className="mr-4">
           <ArrowLeft className="h-5 w-5" />
         </ZhangButton>
-        <h1 className="text-3xl font-bold text-gray-800">作文练习</h1>
+        <h1 className="text-3xl font-bold text-gray-800 zhang-text">作文练习</h1>
       </div>
       
       <div className="space-y-4">
@@ -176,8 +176,8 @@ export default function ExercisePage() {
           className={`p-6 ${isGenerating ? 'cursor-wait' : 'cursor-pointer hover:shadow-md'} transition-shadow`}
           onClick={isGenerating ? undefined : handleGenerateStoryClick}
         >
-          <h2 className="text-xl font-semibold mb-2">生成故事</h2>
-          <p className="text-gray-600">
+          <h2 className="text-xl font-semibold mb-2 zhang-text">生成故事</h2>
+          <p className="text-gray-600 zhang-text">
             {isGenerating ? '正在生成故事中...' : '根据提示生成创意故事，提升写作能力'}
           </p>
         </ZhangCard>
@@ -187,16 +187,16 @@ export default function ExercisePage() {
           className={`p-6 ${isGenerating ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:shadow-md'} transition-shadow`}
           onClick={isGenerating ? undefined : () => handleOptionClick("错词练习")}
         >
-          <h2 className="text-xl font-semibold mb-2">错词练习</h2>
-          <p className="text-gray-600">选择最适合的词语填空，提高词汇运用能力</p>
+          <h2 className="text-xl font-semibold mb-2 zhang-text">错词练习</h2>
+          <p className="text-gray-600 zhang-text">选择最适合的词语填空，提高词汇运用能力</p>
         </ZhangCard>
         
         {/* 尽情期待选项 - 禁用状态 */}
         <ZhangCard 
           className="p-6 cursor-not-allowed opacity-70"
         >
-          <h2 className="text-xl font-semibold mb-2">尽情期待</h2>
-          <p className="text-gray-600">更多练习类型正在开发中，敬请期待！</p>
+          <h2 className="text-xl font-semibold mb-2 zhang-text">尽情期待</h2>
+          <p className="text-gray-600 zhang-text">更多练习类型正在开发中，敬请期待！</p>
         </ZhangCard>
       </div>
     </div>

@@ -17,7 +17,8 @@ module.exports = {
   	},
   	extend: {
       fontFamily: {
-        sans: ['var(--font-noto-sans-sc)', 'sans-serif'],
+        sans: ['var(--font-noto-sans-sc)', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+        'noto-sans-sc': ['var(--font-noto-sans-sc)', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
       },
   		colors: {
   			border: 'hsl(var(--border))',

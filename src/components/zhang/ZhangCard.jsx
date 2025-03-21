@@ -24,7 +24,7 @@ export function ZhangCard({
       {...props}
     >
       {/* 内容 */}
-      <div className="relative z-10">
+      <div className="relative z-10 zhang-text">
         {children}
       </div>
       

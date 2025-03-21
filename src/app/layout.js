@@ -9,7 +9,8 @@ const notoSansSC = Noto_Sans_SC({
   weight: ['400', '500', '700'],
   variable: '--font-noto-sans-sc',
   display: 'swap',
-  preload: false,
+  preload: true,
+  subsets: ['latin'],
 })
 
 export const metadata = {

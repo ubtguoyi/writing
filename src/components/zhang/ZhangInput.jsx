@@ -32,7 +32,7 @@ export function ZhangInput({
           id={id}
           className={cn(
             'w-full rounded-lg bg-muted/50 border border-input px-3 py-2',
-            'text-sm placeholder:text-muted-foreground',
+            'text-sm text-foreground placeholder:text-muted-foreground',
             'focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent',
             'transition-all duration-200 hover:bg-muted/70',
             error && 'border-destructive focus:ring-destructive',
@@ -87,7 +87,7 @@ export function ZhangTextarea({
           id={id}
           className={cn(
             'w-full rounded-lg bg-muted/50 border border-input px-3 py-2',
-            'text-sm placeholder:text-muted-foreground',
+            'text-sm text-foreground placeholder:text-muted-foreground',
             'focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent',
             'transition-all duration-200 hover:bg-muted/70 min-h-[120px] resize-y',
             error && 'border-destructive focus:ring-destructive',
