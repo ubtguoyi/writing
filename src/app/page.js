@@ -17,7 +17,16 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+
+// Define Zod schema for form validation
+const formSchema = z.object({
+  grade: z.string().min(1, { message: "请选择年级" }),
+  wordCount: z.coerce.number().min(1, { message: "字数要求必须大于0" }),
+  title: z.string().min(1, { message: "请输入批改要求" })
+})
 
 /**
  * 主页组件
@@ -31,6 +40,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState("")
   const [apiResponse, setApiResponse] = useState(null)
+  const [imageError, setImageError] = useState("")
   
   // Clear all localStorage items except correctionRecords when component mounts
   useEffect(() => {
@@ -54,7 +64,9 @@ export default function Home() {
       grade: "",
       wordCount: "",
       title: ""
-    }
+    },
+    // Add form validation
+    resolver: zodResolver(formSchema)
   })
 
   /**
@@ -126,6 +138,16 @@ export default function Home() {
    * @param {Object} formValues - 表单的字段值
    */
   const onSubmit = async (formValues) => {
+    // Validate images are uploaded
+    if (images.length === 0) {
+      // Show error for missing images
+      setImageError("请上传作文图片")
+      return
+    } else {
+      // Clear image error if images are uploaded
+      setImageError("")
+    }
+    
     setIsSubmitting(true)
     
     try {
@@ -319,12 +341,19 @@ export default function Home() {
             <div className="p-6">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <p className="text-sm text-gray-500 mb-4">
+                    <span className="text-red-500">*</span> 表示必填字段
+                  </p>
+                  
                   <FormField
                     control={form.control}
                     name="grade"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>年级</FormLabel>
+                        <FormLabel className="flex">
+                          年级
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
                           defaultValue={field.value}
@@ -353,7 +382,10 @@ export default function Home() {
                     name="wordCount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>字数要求</FormLabel>
+                        <FormLabel className="flex">
+                          字数要求
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
                         <FormControl>
                           <ZhangInput 
                             type="number" 
@@ -371,7 +403,10 @@ export default function Home() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>批改要求</FormLabel>
+                        <FormLabel className="flex">
+                          批改要求
+                          <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
                         <FormControl>
                           <ZhangInput 
                             placeholder="请输入批改要求" 
@@ -384,7 +419,10 @@ export default function Home() {
                   />
 
                   <div className="space-y-2">
-                    <Label>上传作文图片</Label>
+                    <Label className="flex items-center">
+                      上传作文图片
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
                     <div className="grid grid-cols-2 gap-4">
                       {images.map((image, index) => (
                         <div key={index} className="relative">
@@ -417,7 +455,7 @@ export default function Home() {
                           />
                           <label
                             htmlFor="image-upload"
-                            className="flex flex-col items-center justify-center w-full h-full min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
+                            className={`flex flex-col items-center justify-center w-full h-full min-h-[200px] border-2 border-dashed ${imageError ? 'border-red-500' : 'border-gray-300'} rounded-lg cursor-pointer hover:bg-gray-50`}
                           >
                             {isUploading ? (
                               <>
@@ -428,8 +466,8 @@ export default function Home() {
                               </>
                             ) : (
                               <>
-                                <Upload className="h-8 w-8 text-gray-400" />
-                                <span className="mt-2 text-sm text-gray-500">
+                                <Upload className={`h-8 w-8 ${imageError ? 'text-red-500' : 'text-gray-400'}`} />
+                                <span className={`mt-2 text-sm ${imageError ? 'text-red-500' : 'text-gray-500'}`}>
                                   点击上传图片
                                 </span>
                               </>
@@ -438,12 +476,21 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+                    {imageError && (
+                      <p className="text-sm font-medium text-red-500">{imageError}</p>
+                    )}
                   </div>
 
                   <ZhangTentacleButton 
                     type="submit" 
                     className="w-full"
-                    disabled={isSubmitting || images.length === 0}
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      if (images.length === 0) {
+                        setImageError("请上传作文图片");
+                      }
+                      // This will trigger form validation through the regular submit process
+                    }}
                   >
                     {isSubmitting ? (
                       <>
@@ -457,6 +504,12 @@ export default function Home() {
                       </>
                     )}
                   </ZhangTentacleButton>
+                  
+                  {(!form.formState.isValid || images.length === 0) && form.formState.submitCount > 0 && (
+                    <p className="text-sm font-medium text-red-500 mt-2">
+                      请确保所有必填项都已正确填写
+                    </p>
+                  )}
                 </form>
               </Form>
             </div>

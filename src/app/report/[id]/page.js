@@ -11,30 +11,6 @@ import {
   PolarRadiusAxis, 
   ResponsiveContainer 
 } from "recharts"
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-
-// Function to preprocess wrong_words data for better Markdown rendering
-const preprocessWrongWords = (wrongWordsText) => {
-  if (!wrongWordsText) return '';
-  
-  // Replace simple line breaks with double line breaks for proper Markdown paragraphs
-  let processed = wrongWordsText.replace(/\n(?!\n)/g, '\n\n');
-  
-  // Format error type headers with proper Markdown syntax
-  processed = processed.replace(/\*\*错误类型\*\*:/g, '## 错误类型:');
-  processed = processed.replace(/\*\*错误词汇\*\*:/g, '## 错误词汇:');
-  processed = processed.replace(/\*\*句子\*\*:/g, '## 句子:');
-  processed = processed.replace(/\*\*错误原因\*\*:/g, '## 错误原因:');
-  
-  // Replace the dash with a bullet point for list items
-  processed = processed.replace(/- \*\*错误类型\*\*:/g, '## 错误类型:');
-  
-  // Replace spaces (力气) with strong emphasis (**力气**)
-  processed = processed.replace(/"([^"]*)"/g, '**$1**');
-  
-  return processed;
-};
 
 export default function Report() {
   const router = useRouter()
@@ -327,7 +303,30 @@ export default function Report() {
         
         // Get wrong_words if it exists
         if (outputData.wrong_words) {
-          wrong_words = outputData.wrong_words;
+          if (typeof outputData.wrong_words === 'string') {
+            try {
+              // Try to parse the JSON string
+              const parsedData = JSON.parse(outputData.wrong_words);
+              
+              // Check if it might be a stringified array/object inside a string
+              if (typeof parsedData === 'string') {
+                try {
+                  // Try parsing again in case of double stringification
+                  wrong_words = JSON.parse(parsedData);
+                } catch (innerErr) {
+                  console.error("Error parsing nested wrong_words string:", innerErr);
+                  wrong_words = parsedData;
+                }
+              } else {
+                wrong_words = parsedData;
+              }
+            } catch (e) {
+              console.error("Error parsing wrong_words:", e);
+              wrong_words = outputData.wrong_words;
+            }
+          } else {
+            wrong_words = outputData.wrong_words;
+          }
           console.log("Processed wrong_words:", wrong_words);
         }
       } catch (e) {
@@ -490,24 +489,30 @@ export default function Report() {
                 <h3 className="text-lg font-medium mb-3">错误文字</h3>
                 {Object.keys(essay.wrong_char).length > 0 ? (
                   <div className="bg-white p-4 rounded-md border">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border p-2 text-left">错误文字</th>
-                          <th className="border p-2 text-left">错误类型</th>
-                          <th className="border p-2 text-left">正确文字</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(essay.wrong_char).map(([key, value], index) => (
-                          <tr key={index} className="border-b">
-                            <td className="border p-2">{value.wrong_char}</td>
-                            <td className="border p-2">{value.wrong_type}</td>
-                            <td className="border p-2">{value.correct_char}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    {Object.entries(essay.wrong_char).map(([key, value], index) => (
+                      <div key={index} className="mb-4 pb-4 border-b last:border-b-0">
+                        <p className="font-medium text-gray-900 mb-2">错误文字:</p>
+                        
+                        <div className="mt-2">
+                          <p className="font-medium text-gray-700">错误文字:</p>
+                          <p className="mb-2 pl-3 border-l-2 border-red-400">{value.wrong_char}</p>
+                        </div>
+                        
+                        {value.wrong_type && (
+                          <div className="mt-2">
+                            <p className="font-medium text-gray-700">错误类型:</p>
+                            <p className="text-gray-600 pl-3">{value.wrong_type}</p>
+                          </div>
+                        )}
+                        
+                        {value.correct_char && (
+                          <div className="mt-2">
+                            <p className="font-medium text-gray-700">正确文字:</p>
+                            <p className="text-gray-600 pl-3">{value.correct_char}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-gray-500">无错误文字</p>
@@ -520,7 +525,7 @@ export default function Report() {
                   <div className="bg-white p-4 rounded-md border">
                     {essay.wrong_sentence.map((item, index) => (
                       <div key={index} className="mb-4 pb-4 border-b last:border-b-0">
-                        <p className="font-medium text-gray-900 mb-2">问题句子 {index + 1}:</p>
+                        <p className="font-medium text-gray-900 mb-2">问题句子:</p>
                         <p className="mb-2 pl-3 border-l-2 border-red-400">{item.sentence}</p>
                         
                         {item.think && (
@@ -547,37 +552,82 @@ export default function Report() {
               <div className="mb-6">
                 <h3 className="text-lg font-medium mb-3">错误词汇</h3>
                 {essay.wrong_words ? (
-                  <div className="bg-white p-4 rounded-md border prose max-w-none">
-                    <div className="markdown-content">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          // Customize how certain elements are rendered
-                          h2: ({node, ...props}) => <h2 className="text-lg font-semibold mt-4 mb-2 text-gray-800" {...props} />,
-                          h3: ({node, ...props}) => <h3 className="text-base font-medium mt-3 mb-1 text-gray-700" {...props} />,
-                          p: ({node, ...props}) => <p className="mb-3 text-gray-600" {...props} />,
-                          ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
-                          li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                          table: ({node, ...props}) => <div className="overflow-x-auto"><table className="min-w-full border-collapse border border-gray-300" {...props} /></div>,
-                          th: ({node, ...props}) => <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-left" {...props} />,
-                          td: ({node, ...props}) => <td className="border border-gray-300 px-3 py-2" {...props} />,
-                          blockquote: ({node, ...props}) => (
-                            <blockquote className="border-l-4 border-red-300 pl-4 italic my-4 text-gray-700" {...props} />
-                          ),
-                          code: ({node, inline, ...props}) => (
-                            inline 
-                              ? <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props} />
-                              : <pre className="bg-gray-100 p-3 rounded overflow-x-auto my-4"><code {...props} /></pre>
-                          ),
-                          // Add special handling for strong elements to highlight error words
-                          strong: ({node, ...props}) => (
-                            <strong className="font-semibold text-red-600" {...props} />
-                          )
-                        }}
-                      >
-                        {preprocessWrongWords(essay.wrong_words)}
-                      </ReactMarkdown>
-                    </div>
+                  <div className="bg-white p-4 rounded-md border">
+                    {Array.isArray(essay.wrong_words) ? (
+                      essay.wrong_words.map((item, index) => (
+                        <div key={index} className="mb-4 pb-4 border-b last:border-b-0">
+                          <p className="font-medium text-gray-900 mb-2">错误词汇:</p>
+                          
+                          {item.wrong_words && (
+                            <div className="mt-2">
+                              <p className="font-medium text-gray-700">错误词汇:</p>
+                              <p className="mb-2 pl-3 border-l-2 border-red-400">{item.wrong_words}</p>
+                            </div>
+                          )}
+                          
+                          {item.wrong_type && (
+                            <div className="mt-2">
+                              <p className="font-medium text-gray-700">错误类型:</p>
+                              <p className="text-gray-600 pl-3">{item.wrong_type}</p>
+                            </div>
+                          )}
+                          
+                          {item.sentence && (
+                            <div className="mt-2">
+                              <p className="font-medium text-gray-700">句子:</p>
+                              <p className="text-gray-600 pl-3">{item.sentence}</p>
+                            </div>
+                          )}
+                          
+                          {item.wrong_reason && (
+                            <div className="mt-2">
+                              <p className="font-medium text-gray-700">错误原因:</p>
+                              <p className="text-gray-600 pl-3">{item.wrong_reason}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div>
+                        {essay.wrong_words.wrong_words_list && Array.isArray(essay.wrong_words.wrong_words_list) ? (
+                          essay.wrong_words.wrong_words_list.map((item, index) => (
+                            <div key={index} className="mb-4 pb-4 border-b last:border-b-0">
+                              <p className="font-medium text-gray-900 mb-2">错误词汇:</p>
+                              
+                              {item.wrong_words && (
+                                <div className="mt-2">
+                                  <p className="font-medium text-gray-700">错误词汇:</p>
+                                  <p className="mb-2 pl-3 border-l-2 border-red-400">{item.wrong_words}</p>
+                                </div>
+                              )}
+                              
+                              {item.wrong_type && (
+                                <div className="mt-2">
+                                  <p className="font-medium text-gray-700">错误类型:</p>
+                                  <p className="text-gray-600 pl-3">{item.wrong_type}</p>
+                                </div>
+                              )}
+                              
+                              {item.sentence && (
+                                <div className="mt-2">
+                                  <p className="font-medium text-gray-700">句子:</p>
+                                  <p className="text-gray-600 pl-3">{item.sentence}</p>
+                                </div>
+                              )}
+                              
+                              {item.wrong_reason && (
+                                <div className="mt-2">
+                                  <p className="font-medium text-gray-700">错误原因:</p>
+                                  <p className="text-gray-600 pl-3">{item.wrong_reason}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-600">错误词汇数据格式不正确: {JSON.stringify(essay.wrong_words)}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-gray-500">无错误词汇</p>
