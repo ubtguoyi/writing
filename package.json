@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "rm -rf .next",
+    "pages:deploy": "npm run clean && NODE_ENV=production npm run build && wrangler pages deploy .next/standalone --commit-dirty=true --exclude=\"**/*.pack,**/*.map\"",
+    "pages:deploy:clean": "npm run clean && NODE_ENV=production npm run build && find .next -type f -name \"*.pack\" -delete && find .next -type f -name \"*.map\" -delete && wrangler pages deploy .next/standalone --commit-dirty=true"
   },
   "dependencies": {
     "@cloudflare/next-on-pages": "^1.13.10",
