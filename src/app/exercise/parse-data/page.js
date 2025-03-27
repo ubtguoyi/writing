@@ -8,7 +8,10 @@ import {
   ZhangCard,
   ZhangTextarea
 } from "@/components/zhang"
-import { parseAndStoreStoryData } from "@/utils/storyDataParser"
+import { 
+  parseAndStoreStoryData, 
+  initMockStoryData 
+} from "@/utils/storyDataParser"
 
 export default function ParseDataPage() {
   const router = useRouter()
@@ -68,6 +71,37 @@ export default function ParseDataPage() {
     setInputData(JSON.stringify(exampleData, null, 2))
   }
 
+  // 使用mock数据的处理函数
+  const handleUseMockData = () => {
+    setIsProcessing(true)
+    setStatus({ success: false, message: "正在加载Mock数据..." })
+
+    try {
+      // 使用工具函数初始化mock数据
+      const mockQuestions = initMockStoryData()
+      
+      if (mockQuestions && mockQuestions.length > 0) {
+        setStatus({
+          success: true,
+          message: `成功加载了${mockQuestions.length}个Mock问题！`
+        })
+      } else {
+        setStatus({
+          success: false,
+          message: "加载Mock数据失败"
+        })
+      }
+    } catch (error) {
+      console.error('加载Mock数据时出错:', error)
+      setStatus({
+        success: false,
+        message: `加载失败: ${error.message}`
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   const handleGoToWordPractice = () => {
     router.push("/exercise/word-practice")
   }
@@ -89,14 +123,23 @@ export default function ParseDataPage() {
           </p>
           
           <div className="mb-4">
-            <ZhangButton 
-              variant="outline" 
-              size="sm" 
-              onClick={handleTestData}
-              className="mb-2"
-            >
-              填充示例数据
-            </ZhangButton>
+            <div className="flex space-x-2 mb-2">
+              <ZhangButton 
+                variant="outline" 
+                size="sm" 
+                onClick={handleTestData}
+              >
+                填充示例数据
+              </ZhangButton>
+              
+              <ZhangButton 
+                variant="outline" 
+                size="sm" 
+                onClick={handleUseMockData}
+              >
+                使用Mock数据
+              </ZhangButton>
+            </div>
             
             <ZhangTextarea
               value={inputData}
@@ -139,6 +182,7 @@ export default function ParseDataPage() {
             <li>本工具用于解析故事练习的JSON数据</li>
             <li>将从Coze API获取的原始JSON响应粘贴到上方文本框</li>
             <li>点击"解析数据"按钮，系统会自动处理并存储</li>
+            <li>也可以点击"使用Mock数据"按钮直接加载预设的例子</li>
             <li>处理成功后，可以点击"去练习"按钮直接前往词语练习页面</li>
             <li>也可以返回练习主页选择其他练习类型</li>
           </ul>

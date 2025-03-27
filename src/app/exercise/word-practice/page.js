@@ -10,6 +10,8 @@ import {
   ZhangBubble 
 } from "@/components/zhang"
 import Image from "next/image"
+// 导入确保数据存在的函数
+import { ensureStoryData } from "@/utils/storyDataParser"
 
 /**
  * 错词练习页面组件
@@ -392,6 +394,9 @@ export default function WordPractice() {
   useEffect(() => {
     const fetchStoryQuestions = () => {
       try {
+        // 首先确保有故事数据，如果没有则使用mock数据
+        ensureStoryData();
+        
         // 从localStorage获取storyQuestions
         const storyQuestionsStr = localStorage.getItem('storyQuestions')
         console.log('从localStorage获取的storyQuestions:', storyQuestionsStr);

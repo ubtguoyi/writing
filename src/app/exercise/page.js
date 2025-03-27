@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { 
@@ -8,10 +8,18 @@ import {
   ZhangCard
 } from "@/components/zhang"
 import storyThemes from '../story_themes.json'
+// 导入确保数据存在的函数
+import { ensureStoryData } from "@/utils/storyDataParser"
 
 export default function ExercisePage() {
   const router = useRouter()
   const [isGenerating, setIsGenerating] = useState(false)
+  
+  // 页面加载时检查数据是否存在
+  useEffect(() => {
+    // 确保存在故事数据，如果不存在则使用mock数据
+    ensureStoryData();
+  }, []);
 
   const handleOptionClick = (option) => {
     if (option === "错词练习") {

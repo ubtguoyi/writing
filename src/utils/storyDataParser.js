@@ -51,6 +51,14 @@ export function parseAndStoreStoryData(responseData) {
       }
     }
     
+    // 检查是否是标准格式的问题数组（这里添加对mock数据的支持）
+    if (data && Array.isArray(data) && data.length > 0 && data[0].question && data[0].selections) {
+      console.log('检测到标准格式问题数组');
+      localStorage.setItem('storyQuestions', JSON.stringify(data));
+      console.log('已将标准格式问题数据存储到localStorage:', data);
+      return data;
+    }
+    
     // 如果不是新格式，返回错误信息
     console.error('不支持的数据格式:', data);
     const errorData = [{ 
@@ -93,4 +101,59 @@ export function storeTestStoryData(exampleData) {
   const dataString = typeof exampleData === 'string' ? exampleData : JSON.stringify(exampleData);
   localStorage.setItem('testStoryData', dataString);
   console.log('测试数据已存储到localStorage，可在下次生成故事时使用');
-} 
+}
+
+/**
+ * 从localStorage中获取故事问题数据
+ * 如果不存在或为空，则返回null
+ * 
+ * @returns {Array|null} - 故事问题数组或null
+ */
+export function getStoryQuestionsFromStorage() {
+  try {
+    const data = localStorage.getItem('storyQuestions');
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('从localStorage获取故事数据失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 从localStorage中获取故事标题
+ * 如果不存在，则返回默认标题
+ * 
+ * @param {string} defaultTitle - 默认标题
+ * @returns {string} - 故事标题
+ */
+export function getStoryTitleFromStorage(defaultTitle = '章同学的故事') {
+  const title = localStorage.getItem('storyTitle');
+  return title || defaultTitle;
+}
+
+// 导入mock数据相关函数
+import { mockStoryQuestions, initMockStoryData, clearMockStoryData } from './mockStoryData';
+
+/**
+ * 检查是否存在故事数据，如果不存在则尝试使用mock数据
+ * 主要用于开发环境，确保始终有数据可用
+ * 
+ * @param {boolean} forceMock - 是否强制使用mock数据
+ * @returns {Array} - 故事问题数组
+ */
+export function ensureStoryData(forceMock = false) {
+  const existingData = getStoryQuestionsFromStorage();
+  
+  // 如果不存在数据或强制使用mock数据
+  if (!existingData || forceMock) {
+    console.log('未检测到故事数据或已强制使用mock数据，初始化mock数据');
+    return initMockStoryData();
+  }
+  
+  console.log('检测到已有故事数据:', existingData);
+  return existingData;
+}
+
+// 导出mock相关功能
+export { mockStoryQuestions, initMockStoryData, clearMockStoryData }; 
