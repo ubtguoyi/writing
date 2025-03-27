@@ -12,6 +12,8 @@ import {
 import Image from "next/image"
 // 导入确保数据存在的函数
 import { ensureStoryData } from "@/utils/storyDataParser"
+// 直接导入mock数据
+import { mockStoryQuestions } from "@/utils/mockStoryData"
 
 /**
  * 错词练习页面组件
@@ -390,11 +392,47 @@ export default function WordPractice() {
     }
   };
   
-  // 从localStorage获取storyQuestions数据并解析
+  // 获取练习题数据
   useEffect(() => {
     const fetchStoryQuestions = () => {
       try {
-        // 首先确保有故事数据，如果没有则使用mock数据
+        // 直接使用导入的mock数据，而不是从localStorage获取
+        console.log('直接使用导入的mockStoryQuestions数据');
+        const storyQuestions = mockStoryQuestions;
+        
+        console.log('使用的mockStoryQuestions数据:', storyQuestions);
+        
+        if (Array.isArray(storyQuestions) && storyQuestions.length > 0) {
+          // 直接使用convertToQuestionFormat处理问题数组
+          const formattedQuestions = convertToQuestionFormat(storyQuestions);
+          console.log('格式化后的问题:', formattedQuestions);
+          
+          if (formattedQuestions.length > 0) {
+            setQuestions(formattedQuestions);
+            questionsRef.current = formattedQuestions; // 存储到ref中
+            // 预加载图片
+            preloadQuestionImages(formattedQuestions);
+          } else {
+            console.log('处理后没有有效的问题，尝试从localStorage获取');
+            fetchQuestionsFromLocalStorage();
+          }
+        } else {
+          console.log('mockStoryQuestions不是有效的数组或为空，尝试从localStorage获取');
+          fetchQuestionsFromLocalStorage();
+        }
+      } catch (error) {
+        console.error('使用mockStoryQuestions时出错:', error);
+        console.log('尝试从localStorage获取');
+        fetchQuestionsFromLocalStorage();
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    // 从localStorage获取数据的后备方法
+    const fetchQuestionsFromLocalStorage = () => {
+      try {
+        // 确保存在故事数据，如果不存在则使用mock数据
         ensureStoryData();
         
         // 从localStorage获取storyQuestions
