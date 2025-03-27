@@ -25,7 +25,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 const formSchema = z.object({
   grade: z.string().min(1, { message: "请选择年级" }),
   wordCount: z.coerce.number().min(1, { message: "字数要求必须大于0" }),
-  title: z.string().min(1, { message: "请输入批改要求" })
+  title: z.string().min(1, { message: "请输入主题要求" })
 })
 
 /**
@@ -410,12 +410,12 @@ export default function Home() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex">
-                          批改要求
+                          主题要求
                           <span className="text-red-500 ml-1">*</span>
                         </FormLabel>
                         <FormControl>
                           <ZhangInput 
-                            placeholder="请输入批改要求" 
+                            placeholder="请输入主题要求" 
                             {...field}
                           />
                         </FormControl>

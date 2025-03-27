@@ -9,8 +9,7 @@ import {
   AlignLeft, 
   Image as ImageIcon,
   Eye,
-  Loader2,
-  RefreshCw
+  Loader2
 } from "lucide-react"
 import { 
   ZhangButton, 
@@ -29,7 +28,6 @@ import { GRADE_MAP } from "@/lib/constants"
 export default function CorrectionRecords() {
   const router = useRouter()
   const [records, setRecords] = useState([])
-  const [isRefreshing, setIsRefreshing] = useState(false)
   
   // 从localStorage加载记录
   const loadRecordsFromStorage = () => {
@@ -49,13 +47,6 @@ export default function CorrectionRecords() {
     // 组件卸载时清除定时器
     return () => clearInterval(intervalId)
   }, [])
-  
-  // 手动刷新记录
-  const handleRefresh = () => {
-    setIsRefreshing(true)
-    loadRecordsFromStorage()
-    setTimeout(() => setIsRefreshing(false), 500)
-  }
 
   /**
    * 格式化日期字符串为易读格式
@@ -149,16 +140,6 @@ export default function CorrectionRecords() {
           <ArrowLeft className="h-5 w-5" />
         </ZhangButton>
         <h1 className="text-3xl font-bold text-gray-800">批改记录</h1>
-        <ZhangButton 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh} 
-          disabled={isRefreshing}
-          className="ml-auto"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          刷新
-        </ZhangButton>
       </div>
 
       <div className="grid gap-6">

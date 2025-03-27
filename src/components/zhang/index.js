@@ -8,6 +8,7 @@ export * from './ZhangButton';
 
 // 输入框相关
 export * from './ZhangInput';
+export * from './ZhangTextarea';
 
 // 卡片相关
 export * from './ZhangCard';
